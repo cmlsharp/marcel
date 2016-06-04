@@ -1,9 +1,9 @@
 CC = gcc
-CFLAGS = -O0 -Wall -Werror
+CFLAGS = -O0 -Wall -Werror -ggdb3 -pedantic
 EXE = msh
-HDRS = msh.h msh_execute.h
+HDRS = msh.h msh_execute.h hash_table.h
 LIBS = -lreadline
-SRCS = msh.c msh_execute.c
+SRCS = msh.c msh_execute.c hash_table.c
 OBJS = $(SRCS:.c=.o)
 
 

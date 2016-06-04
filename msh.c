@@ -15,7 +15,7 @@
 #define PARSE_DELIM " \t\n\r"
 #define PROMPT_LEN 1024
 
-int exit_code = 0;
+int exit_code = 0; 
 sigjmp_buf sigbuf;
 
 static void signal_handle(int signo);
@@ -30,6 +30,11 @@ int main(void)
     if (signal(SIGINT, signal_handle) == SIG_ERR) exit(-2);
     while (sigsetjmp(sigbuf,1) != 0);
 
+    if (initialize_internals() != 0) {
+        fprintf(stderr, "Error initializing %s. Quitting\n", NAME);
+        exit(1);
+    }
+
     while (gen_prompt(p, PROMPT_LEN), buf = readline(p)) {
         cmd c = CMD_DEF;
         parse_cmd(&c, buf);
@@ -39,6 +44,7 @@ int main(void)
         }
         free(buf);
     }
+    cleanup_internals();
     return exit_code;
 }
 

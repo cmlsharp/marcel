@@ -7,10 +7,9 @@
 #include <unistd.h>
 
 #include "msh_execute.h"
+#include "hash_table.h"
 
 #define NUM_BUILTINS (sizeof builtin_names / sizeof (char*))
-
-typedef int (*cmd_func)(cmd const*);
 
 static int msh_cd(cmd const *c);
 static int exec_cmd(cmd const *c);
@@ -18,7 +17,7 @@ static int msh_exit(cmd const *c);
 
 //TODO: Fix this hacky garbage w/ apropriate data structure (hash table)
 
-char const * const builtin_names[] = {
+char const *builtin_names[] = {
     "cd",
     "exit"
 };
@@ -28,15 +27,25 @@ cmd_func const builtin_funcs[] = {
     &msh_exit
 };
 
+node *table[TABLE_SIZE] = {0};
+
+int initialize_internals(void) {
+    for (size_t i = 0; i < NUM_BUILTINS; i++) {
+        if (add_node(builtin_funcs[i], builtin_names[i], table) != 0)
+            return -1;
+    }
+    return 0;
+}
+
+void cleanup_internals(void) {
+    free_table(table);
+}
+
 
 int run_cmd(cmd *const c)
 {
-    for (size_t i = 0; i < NUM_BUILTINS; i++) {
-        if (strcmp(builtin_names[i], c->argv[0]) == 0) {
-            return (builtin_funcs[i])(c);
-        }
-    }
-    return exec_cmd(c);
+    cmd_func f = find_node(*c->argv, table);
+    return (f) ? f(c) : exec_cmd(c);
 }
 
 static int exec_cmd(cmd const *c)
