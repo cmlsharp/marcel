@@ -42,8 +42,9 @@ int main(void)
     
     while (gen_prompt(p, PROMPT_LEN), buf = readline(p)) {
         add_history(buf);
+        if (!*buf) continue; // Skip empty line
         cmd *c = parse_line(buf);
-        if (*c->argv) {
+        if (c && *c->argv) {
             exit_code = run_cmd(c); // MUTATING GLOBAL VARIABLE
         }
         free(buf);
