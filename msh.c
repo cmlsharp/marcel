@@ -76,7 +76,7 @@ static cmd *parse_line(char *line)
     while (parse_cmd_argv(crawler, t), (t = strtok_r(NULL, "|", &sp))) {
         if (!*crawler->argv) return NULL;
         crawler->next = def_cmd();
-        if (!crawler) return NULL;
+        if (!crawler->next) return NULL;
 
         // Create pipe
         pipe(fd);
