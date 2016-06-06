@@ -10,7 +10,7 @@ Practice implementation of a shell
 
 ### What isn't:
 * IO redirection (e.g. echo "Hello, world!" > foo.txt)
-* Any sort of robust lexical analysis (currently, any instance of the character '|' is interpreted as a pipe, the command echo "hello, world" outputs "hello world" with surrounding double quotes, etc.)
+* Sane lexical analysis. (This is really hacky right now, will eventually use flex or something similar)
 * Background jobs
 * Setting environment variables
 * Anything else not mentioned in the above section
