@@ -2,12 +2,13 @@
 #include <string.h>
 #include "hash_table.h"
 
-static unsigned long hash(char const *str);
+static unsigned long get_index(char const *str);
+
 
 int add_node(cmd_func f, char const *s, node **table)
 {
     if (!table) return -1;
-    unsigned long i = hash(s) & (TABLE_SIZE - 1); // Mod
+    unsigned long i = get_index(s, TABLE_SIZE);
     node *crawler = NULL;
 
     node *new = malloc(sizeof (node));
@@ -30,8 +31,8 @@ int add_node(cmd_func f, char const *s, node **table)
 
 cmd_func find_node(char const *s, node **table)
 {
-    if (!table) return NULL;    
-    node *crawler = table[hash(s) & (TABLE_SIZE-1)];
+    if (!table) return NULL;
+    node *crawler = table[get_index(s, TABLE_SIZE)];
     while (crawler) {
         if (strcmp(crawler->s, s) == 0) return crawler->f;
         crawler = crawler->next;
@@ -52,13 +53,12 @@ void free_table(node **table)
     }
 }
 
-// djb2
-static unsigned long hash(char const *str)
+// Modified djb2
+static unsigned long get_index(char const *str, size_t size)
 {
     unsigned long hash = 5381;
     int c;
-    while ((c = *str++)) {
+    while ((c = *str++))
         hash = ((hash << 5) + hash) + c;
-    }
-    return hash;
+    return hash & (size - 1);
 }

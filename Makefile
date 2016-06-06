@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -O0 -Wall -Werror -ggdb3 -pedantic
+CFLAGS = -O0 -Wall -ggdb3 -pedantic
 EXE = msh
 HDRS = msh.h msh_execute.h hash_table.h
 LIBS = -lreadline

@@ -11,9 +11,7 @@ typedef struct cmd {
     char *argv[MAX_ARGS];
     int in;
     int out;
+    struct cmd *next;
 } cmd;
-
-// Command with empty buffer, input from stdin, output to stdout
-#define CMD_DEF {.argv = {0}, .in = 0, .out = 1}
 
 #endif
