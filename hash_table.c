@@ -2,7 +2,7 @@
 #include <string.h>
 #include "hash_table.h"
 
-static unsigned long get_index(char const *str);
+static unsigned long get_index(char const *str, size_t size);
 
 
 int add_node(cmd_func f, char const *s, node **table)
