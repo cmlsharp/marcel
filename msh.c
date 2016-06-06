@@ -30,15 +30,16 @@ int main(void)
     // Use tab for shell completion
     rl_bind_key('\t', rl_complete);
     if (signal(SIGINT, signal_handle) == SIG_ERR) exit(-2);
-    // Ctrl_c returns control flow to here
-    while (sigsetjmp(sigbuf,1) != 0);
 
     // Create hash table of internal commands
     if (initialize_internals() != 0) {
         fprintf(stderr, "Error initializing %s. Quitting\n", NAME);
         exit(1);
     }
-
+    
+    // Ctrl_c returns control flow to here
+    while (sigsetjmp(sigbuf,1) != 0);
+    
     while (gen_prompt(p, PROMPT_LEN), buf = readline(p)) {
         add_history(buf);
         cmd *c = parse_line(buf);
