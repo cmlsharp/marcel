@@ -3,6 +3,7 @@
 
 #include "msh.h"
 
+// Builtin function
 typedef int (*cmd_func)(cmd const*);
 
 int run_cmd(cmd *const c);
