@@ -26,7 +26,7 @@ static cmd *def_cmd(void);
 
 int main(void)
 {
-    char p[PROMPT_LEN], buf = NULL;
+    char p[PROMPT_LEN], *buf = NULL;
     // Use tab for shell completion
     rl_bind_key('\t', rl_complete);
     if (signal(SIGINT, signal_handle) == SIG_ERR) exit(-2);
@@ -73,7 +73,7 @@ static cmd *parse_line(char *line)
     cmd *crawler = root;
     char *t = strtok_r(line, "|", &sp);
     // Loop runs only if there is at least one pipe
-    while (parse_cmd_argv(crawler, t), (t = strtok_r(NULL, "|", &sp))) {
+    while (parse_cmd_argv(crawler, t), t = strtok_r(NULL, "|", &sp)) {
         if (!*crawler->argv) return NULL;
         crawler->next = def_cmd();
         if (!crawler->next) return NULL;
