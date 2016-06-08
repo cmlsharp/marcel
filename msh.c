@@ -50,6 +50,7 @@ int main(void)
             exit_code = run_cmd(crawler);
         }
         free_cmds(crawler);
+        free(buf);
     }
     cleanup_internals();
     return exit_code;
