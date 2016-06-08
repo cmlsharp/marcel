@@ -11,22 +11,21 @@
 
 #include "msh.h"
 #include "msh_execute.h"
+#include "msh.tab.h"
+#include "lex.yy.h"
 
-#define PARSE_DELIM " \t\n\r"
 #define PROMPT_LEN 1024
 
 int exit_code = 0;
 sigjmp_buf sigbuf;
 
 static void signal_handle(int signo);
-static void parse_cmd_argv(cmd *c, char *buf);
 static void gen_prompt(char *p, size_t n);
-static cmd *parse_line(char *line);
-static cmd *def_cmd(void);
+cmd *def_cmd(void);
 
 int main(void)
 {
-    char p[PROMPT_LEN], *buf = NULL;
+    char p[PROMPT_LEN], *buf;
     // Use tab for shell completion
     rl_bind_key('\t', rl_complete);
     if (signal(SIGINT, signal_handle) == SIG_ERR) exit(-2);
@@ -41,14 +40,16 @@ int main(void)
     while (sigsetjmp(sigbuf,1) != 0);
     
     while (gen_prompt(p, PROMPT_LEN), buf = readline(p)) {
+        cmd *crawler = def_cmd();
         add_history(buf);
-        if (!*buf) continue; // Skip empty line
-        cmd *c = parse_line(buf);
-        if (c && *c->argv) {
-            exit_code = run_cmd(c); // MUTATING GLOBAL VARIABLE
+        YY_BUFFER_STATE b = yy_scan_string(buf);
+        yyparse(crawler,1);
+        yy_delete_buffer(b);
+
+        if (*crawler->argv) {
+            exit_code = run_cmd(crawler);
         }
-        free(buf);
-        free_cmds(c);
+        free_cmds(crawler);
     }
     cleanup_internals();
     return exit_code;
@@ -64,49 +65,14 @@ static void gen_prompt(char *p, size_t n)
     free(dir);
 }
 
-// Creates linked-list of cmd objects with pipes between them
-static cmd *parse_line(char *line)
-{
-    int fd[2];
-    char *sp; // Saveptr for strtok_r
-    cmd *root = def_cmd();
-    if (!root) return NULL;
-    cmd *crawler = root;
-    char *t = strtok_r(line, "|", &sp);
-    // Loop runs only if there is at least one pipe
-    while (parse_cmd_argv(crawler, t), t = strtok_r(NULL, "|", &sp)) {
-        if (!*crawler->argv) return NULL;
-        crawler->next = def_cmd();
-        if (!crawler->next) return NULL;
-
-        // Create pipe
-        pipe(fd);
-        crawler->out = fd[1];
-        crawler = crawler->next;
-        crawler->in = fd[0];
-    }
-    return root;
-}
-
 // Create a single cmd that takes input from stdin and outputs to stdout
-static cmd *def_cmd(void)
+cmd *def_cmd(void)
 {
     cmd *ret = calloc(1, sizeof (cmd));
     ret->out = 1;
+    ret->wait = 1;
     return ret;
 }
-
-// TODO: Implement output/input redirection
-// Fills in the argv field of cmd object based on input string
-static void parse_cmd_argv(cmd *c, char *buf)
-{
-    char *t = strtok(buf, PARSE_DELIM);
-    for (size_t i = 0; t && i < MAX_ARGS; i++) {
-        c->argv[i] = t;
-        t = strtok(NULL, PARSE_DELIM);
-    }
-}
-
 
 static void signal_handle(int signo)
 {

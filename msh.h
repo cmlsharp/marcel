@@ -12,7 +12,10 @@ typedef struct cmd {
     char *argv[MAX_ARGS]; // Command to execute and its arguments
     int in; // File descriptor of input
     int out; // File descriptor of output
+    int wait; // Wait for child process to finish
     struct cmd *next; // Pointer to next piped cmd
 } cmd;
+
+cmd *def_cmd(void);
 
 #endif

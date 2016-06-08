@@ -51,6 +51,7 @@ void cleanup_internals(void)
 void free_cmds(cmd *crawler)
 {
     while (crawler) {
+        for (size_t i = 0; crawler->argv[i] && i < MAX_ARGS; i++) free(crawler->argv[i]);
         cmd *next = crawler->next;
         free(crawler);
         crawler = next;
