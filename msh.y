@@ -117,7 +117,7 @@ int arg_index = 1;
 cmd *first = NULL;
 int yyerror (char *s)
 {
-    /*fprintf(stderr, "Parse error %s\n", s);*/
+    fprintf(stderr, "Parse error %s\n", s);
 }
 
 /*yydebug = 1;*/

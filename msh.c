@@ -21,6 +21,7 @@ sigjmp_buf sigbuf;
 
 static void signal_handle(int signo);
 static void gen_prompt(char *p, size_t n);
+static char *add_newline(char *buf);
 cmd *def_cmd(void);
 
 int main(void)
@@ -42,10 +43,10 @@ int main(void)
     while (gen_prompt(p, PROMPT_LEN), buf = readline(p)) {
         cmd *crawler = def_cmd();
         add_history(buf);
+        buf = add_newline(buf);
         YY_BUFFER_STATE b = yy_scan_string(buf);
         yyparse(crawler,1);
         yy_delete_buffer(b);
-
         if (*crawler->argv) {
             exit_code = run_cmd(crawler);
         }
@@ -82,3 +83,13 @@ static void signal_handle(int signo)
         siglongjmp(sigbuf, 1); // Print new line and ignore SIGINT
     }
 }
+
+// Grammar expects newline and readline doesn't supply it
+static char *add_newline(char *buf)
+{
+    size_t len = strlen(buf);
+    char *ret = malloc((len + 2) * sizeof (char));
+    ret = strcat(buf, "\n");
+    return ret;
+}
+
