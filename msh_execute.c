@@ -34,8 +34,9 @@ node *table[TABLE_SIZE] = {0};
 int initialize_internals(void)
 {
     for (size_t i = 0; i < NUM_BUILTINS; i++) {
-        if (add_node(builtin_funcs[i], builtin_names[i], table) != 0)
+        if (add_node(builtin_funcs[i], builtin_names[i], table) != 0) {
             return -1;
+        }
     }
     return 0;
 }
@@ -51,7 +52,9 @@ void cleanup_internals(void)
 void free_cmds(cmd *crawler)
 {
     while (crawler) {
-        for (size_t i = 0; crawler->argv[i] && i < MAX_ARGS; i++) free(crawler->argv[i]);
+        for (size_t i = 0; crawler->argv[i] && i < MAX_ARGS; i++) {
+            free(crawler->argv[i]);
+        }
         cmd *next = crawler->next;
         free(crawler);
         crawler = next;
@@ -68,8 +71,12 @@ int run_cmd(cmd *const c)
         // Check if cmd is builtin
         cmd_func f = find_node(*crawler->argv, table);
         ret = (f) ? f(crawler) : exec_cmd(crawler);
-        if (crawler->in != 0) close(crawler->in);
-        if (crawler->out != 1) close(crawler->out);
+        if (crawler->in != 0) {
+            close(crawler->in);
+        }
+        if (crawler->out != 1) {
+            close(crawler->out);
+        }
         crawler = crawler->next;
     }
     return ret;
@@ -90,13 +97,16 @@ static int exec_cmd(cmd const *c)
             exit(-1);
         }
     } else if (p>0) {
-        if (!c->wait) return 0;
+        if (!c->wait) {
+            return 0;
+        }
         do {
             waitpid(p, &status, WUNTRACED);
         } while (!WIFEXITED(status) && !WIFSIGNALED(status));
         return WEXITSTATUS(status); // Return exit code
-    } else
+    } else {
         perror(NAME);
+    }
     return 1;
 }
 

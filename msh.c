@@ -44,10 +44,10 @@ int main(void)
         fprintf(stderr, "Error initializing %s. Quitting\n", NAME);
         exit(1);
     }
-    
+
     // Ctrl_c returns control flow to here
     while (sigsetjmp(sigbuf,1) != 0);
-    
+
     while (gen_prompt(p, PROMPT_LEN), buf = readline(p)) {
         cmd *crawler = def_cmd();
         add_history(buf);
@@ -88,7 +88,7 @@ cmd *def_cmd(void)
 
 static void signal_handle(int signo)
 {
-    switch (signo) { 
+    switch (signo) {
     case SIGINT:
         if (signo == SIGINT) {
             puts("");
@@ -114,6 +114,6 @@ static int setup_signals(void)
     if (sigemptyset(&act.sa_mask) == -1) {
         return 1;
     }
-    return ((sigaction(SIGINT, &act, NULL) == -1) || 
+    return ((sigaction(SIGINT, &act, NULL) == -1) ||
             (sigaction(SIGCHLD, &act, NULL)  == -1));
 }
