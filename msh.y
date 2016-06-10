@@ -31,7 +31,6 @@ extern cmd *first;
 cmd_line:
     pipes io_mods bkg NL {}
     | NL
-    | error NL {yyerrok;}
     ;
 
 bkg:
@@ -118,7 +117,7 @@ int arg_index = 1;
 cmd *first = NULL;
 int yyerror (char *s)
 {
-    fprintf(stderr, "Parse error %s\n", s);
+    fprintf(stderr, "%s: syntax error\n", NAME);
 }
 
 /*yydebug = 1;*/

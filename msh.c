@@ -2,9 +2,11 @@
 #include <stdlib.h>
 #include <string.h>
 #include <setjmp.h>
+#include <assert.h>
 
 #include <signal.h>
 #include <unistd.h>
+#include <sys/wait.h>
 
 #include <readline/readline.h>
 #include <readline/history.h>
@@ -22,14 +24,20 @@ sigjmp_buf sigbuf;
 static void signal_handle(int signo);
 static void gen_prompt(char *p, size_t n);
 static void add_newline(char **buf);
+static int setup_signals(void);
 cmd *def_cmd(void);
+
 
 int main(void)
 {
     char p[PROMPT_LEN], *buf;
     // Use tab for shell completion
     rl_bind_key('\t', rl_complete);
-    if (signal(SIGINT, signal_handle) == SIG_ERR) exit(-2);
+
+    if (setup_signals() != 0) {
+        perror(NAME);
+        return 1;
+    }
 
     // Create hash table of internal commands
     if (initialize_internals() != 0) {
@@ -46,10 +54,10 @@ int main(void)
 
         add_newline(&buf);
         YY_BUFFER_STATE b = yy_scan_string(buf);
-        yyparse(crawler,1);
+        int s = yyparse(crawler,1);
         yy_delete_buffer(b);
 
-        if (*crawler->argv) {
+        if (s == 0 && *crawler->argv) {
             exit_code = run_cmd(crawler);
         }
         free_cmds(crawler);
@@ -80,9 +88,14 @@ cmd *def_cmd(void)
 
 static void signal_handle(int signo)
 {
-    if (signo == SIGINT) {
-        puts("");
-        siglongjmp(sigbuf, 1); // Print new line and ignore SIGINT
+    switch (signo) { 
+    case SIGINT:
+        if (signo == SIGINT) {
+            puts("");
+            siglongjmp(sigbuf, 1); // Print new line and ignore SIGINT
+        }
+    case SIGCHLD:
+        waitpid(-1, NULL , WNOHANG | WUNTRACED);
     }
 }
 
@@ -94,3 +107,13 @@ static void add_newline(char **buf)
     *buf = strcat(*buf, "\n");
 }
 
+static int setup_signals(void)
+{
+    struct sigaction act = {0};
+    act.sa_handler = signal_handle;
+    if (sigemptyset(&act.sa_mask) == -1) {
+        return 1;
+    }
+    return ((sigaction(SIGINT, &act, NULL) == -1) || 
+            (sigaction(SIGCHLD, &act, NULL)  == -1));
+}

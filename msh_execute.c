@@ -90,6 +90,7 @@ static int exec_cmd(cmd const *c)
             exit(-1);
         }
     } else if (p>0) {
+        if (!c->wait) return 0;
         do {
             waitpid(p, &status, WUNTRACED);
         } while (!WIFEXITED(status) && !WIFSIGNALED(status));
