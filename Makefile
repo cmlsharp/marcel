@@ -1,10 +1,12 @@
 CC = gcc
 CFLAGS = -O0 -Wall -ggdb3 -pedantic
 EXE = msh
-HDRS = msh.h msh_execute.h hash_table.h lex.yy.h msh.tab.h
 LIBS = -lreadline -lfl
-SRCS = msh.c msh_execute.c hash_table.c msh.tab.c lex.yy.c
+SRCS = msh.tab.c lex.yy.c msh.c msh_execute.c hash_table.c 
 OBJS = $(SRCS:.c=.o)
+
+%.c: %.y
+%.c: %.l
 
 all: $(EXE)
 
@@ -14,7 +16,7 @@ msh.tab.c msh.tab.h: msh.y
 lex.yy.c lex.yy.h: msh.l
 	flex --header-file=lex.yy.h msh.l
 
-$(EXE): $(HDRS) Makefile
+$(EXE): $(OBJS)
 	$(CC) $(CFLAGS) -o $@ $(SRCS) $(LIBS)
 
 # housekeeping

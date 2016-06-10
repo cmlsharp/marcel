@@ -31,6 +31,7 @@ extern cmd *first;
 cmd_line:
     pipes io_mods bkg NL {}
     | NL
+    | error NL {yyerrok;}
     ;
 
 bkg:
