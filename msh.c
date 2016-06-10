@@ -54,15 +54,17 @@ int main(void)
 
         add_newline(&buf);
         YY_BUFFER_STATE b = yy_scan_string(buf);
-        int s = yyparse(crawler,1);
-        yy_delete_buffer(b);
 
-        if (s == 0 && *crawler->argv) {
+        if ((yyparse(crawler, 1) == 0) && *crawler->argv) {
             exit_code = run_cmd(crawler);
         }
+        
+        // Cleanup
+        yy_delete_buffer(b);
         free_cmds(crawler);
         free(buf);
     }
+    
     cleanup_internals();
     return exit_code;
 }
