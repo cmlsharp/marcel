@@ -58,13 +58,13 @@ int main(void)
         if ((yyparse(crawler, 1) == 0) && *crawler->argv) {
             exit_code = run_cmd(crawler);
         }
-        
+
         // Cleanup
         yy_delete_buffer(b);
         free_cmds(crawler);
         free(buf);
     }
-    
+
     cleanup_internals();
     return exit_code;
 }
