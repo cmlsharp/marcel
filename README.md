@@ -18,3 +18,4 @@ Practice implementation of a shell
 * Anything else not mentioned in the above section
 * Sane error handling
 * Keeping track of background jobs
+* stderr redirection
