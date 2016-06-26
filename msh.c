@@ -16,14 +16,15 @@
 #include "msh.h"
 #include "msh_internals.h"
 #include "msh_macros.h"
-#include "msh.tab.h"
-#include "lex.yy.h"
+#include "msh.tab.h" // 
+#include "lex.yy.h" // YY_BUFFER_STATE, yy_delete_buffer
 
 int exit_code = 0;
 sigjmp_buf sigbuf;
 
 static void signal_handle(int signo);
 static char *gen_prompt(void);
+static char *get_input(void);
 static void add_newline(char **buf);
 static int setup_signals(void);
 cmd *def_cmd(void);
@@ -40,8 +41,8 @@ int main(void)
     // Ctrl_c returns control flow to here
     while (sigsetjmp(sigbuf,1) != 0);
 
-    char *buf, *p;
-    while ((p = gen_prompt()), buf = readline(p)) {
+    char *buf = NULL;
+    while ((buf = get_input())) {
         cmd *crawler = def_cmd();
         add_history(buf);
 
@@ -55,11 +56,19 @@ int main(void)
         // Cleanup
         yy_delete_buffer(b);
         free_cmds(crawler);
-        Free_all(buf, p);
+        Free(buf);
     }
-
-    Free(p);
     return exit_code;
+}
+
+// Prints prompt and returns line entered by user. Returned string must be
+// freed. Returns NULL on EOF
+static char *get_input(void)
+{
+    char *p = gen_prompt();
+    char *line = readline(p);
+    Free(p);
+    return line;
 }
 
 // Creates shell prompt based on username and current directory

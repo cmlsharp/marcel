@@ -108,7 +108,7 @@ static int exec_cmd(cmd const *c)
         }
         do {
             waitpid(p, &status, WUNTRACED);
-        } while (!WIFEXITED(status) && !WIFSIGNALED(status));
+        } while (!WIFEXITED(status) && !WIFSIGNALED(status) && !WIFSTOPPED(status));
         return WEXITSTATUS(status); // Return exit code
     } else {
         perror(NAME);

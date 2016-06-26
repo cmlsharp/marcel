@@ -15,7 +15,7 @@ Practice implementation of a shell
 ### What isn't:
 * Setting environment variables
 * Escape sequences
-* Anything else not mentioned in the above section
-* Sane error handling
 * Keeping track of background jobs
 * stderr redirection
+* Defining aliases/functions
+* Anything else not mentioned in the above section

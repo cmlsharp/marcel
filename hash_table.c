@@ -52,7 +52,7 @@ void free_table(hash_table *t)
     if (!t) {
         return;
     }
-    for (size_t i = 0; i < t->size; i++) {
+    for (size_t i = 0; i < t->capacity; i++) {
         node *crawler = t->nodes[i];
         while (crawler) {
             node *next = crawler->next;
