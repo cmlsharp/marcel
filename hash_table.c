@@ -1,7 +1,7 @@
-#include <stdlib.h>
-#include <string.h>
-#include "hash_table.h"
-#include "msh_macros.h"
+#include <stdlib.h> // malloc, realloc
+#include <string.h> // strcmp
+#include "hash_table.h" // hash_table, node
+#include "msh_macros.h" // Stopif, Free
 
 static unsigned long get_index(char const *key, size_t size);
 
