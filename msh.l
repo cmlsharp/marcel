@@ -7,12 +7,12 @@
 
 %%
 
-\n   { return NL; }
+\n { return NL; }
 >  { return OUT_T; } 
 >> { return OUT_A; }
-"<"  { return IN; }
-"&"  { return BKG; }
-\| {return PIPE; }
+"<" { return IN; }
+"&" { return BKG; }
+\| { return PIPE; }
 [ \t] {}
 \"[^\"]*\" {
     yylval.str = strdup(yytext + 1);

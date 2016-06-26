@@ -1,9 +1,14 @@
 %{
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+
 #include <fcntl.h>
 #include <unistd.h>
+
 #include "msh.h"
+#include "msh_macros.h"
 #define YYDEBUG 1
 #pragma GCC diagnostic ignored "-Wreturn-type"
 #pragma GCC diagnostic ignored "-Wimplicit-function-declaration"
@@ -46,17 +51,13 @@ io_mods:
 io_mod:
     IN WORD {
         int f = open($2, O_RDONLY);
-        if (f == -1) {
-            perror(NAME); 
-        }
+        Stopif(f == -1, {Free($2); YYABORT;}, strerror(errno));
         first->in = f;
     }
     | OUT_T WORD {
         if (crawler->out == 1) {
             int f = open($2, O_WRONLY | O_CREAT | O_TRUNC, 0644);
-            if (f == -1) {
-                perror(NAME); 
-            }
+            Stopif(f == -1, {Free($2); YYABORT;}, strerror(errno));
             crawler->out = f;
         }
 
@@ -64,9 +65,7 @@ io_mod:
     | OUT_A WORD {
         if (crawler->out == 1) {
             int f = open($2, O_WRONLY | O_CREAT | O_APPEND, 0644);
-            if (f == -1) {
-                perror(NAME); 
-            }
+            Stopif(f == -1, {Free($2); YYABORT;}, strerror(errno));
             crawler->out = f;
         }
     }
@@ -83,10 +82,7 @@ cmd:
 
 args:
     args WORD {
-        if (arg_index == MAX_ARGS - 1) {
-            fprintf(stderr, "%s: Too many arguments. Last argument read: %s", NAME, $2);
-            YYABORT;
-        }
+        Stopif(arg_index == (MAX_ARGS - 1), YYABORT, "Too many arguments. Last argument read: %s", NAME);
         crawler->argv[arg_index++] = $2;
     }
     | { // This is reached ONLY before the first arg of each pipe 
@@ -98,10 +94,6 @@ args:
             first = crawler;
         } else {
             crawler->next = def_cmd();
-            if (!crawler->next) {
-                fprintf(stderr, "%s: Memory allocation error.", NAME);
-                YYABORT;
-            }
             int fd[2];
             pipe(fd);
             crawler->out = fd[1];

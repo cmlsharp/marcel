@@ -1,3 +1,5 @@
+#define _GNU_SOURCE // asprintf
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -12,17 +14,16 @@
 #include <readline/history.h>
 
 #include "msh.h"
-#include "msh_execute.h"
+#include "msh_internals.h"
+#include "msh_macros.h"
 #include "msh.tab.h"
 #include "lex.yy.h"
-
-#define PROMPT_LEN 1024
 
 int exit_code = 0;
 sigjmp_buf sigbuf;
 
 static void signal_handle(int signo);
-static void gen_prompt(char *p, size_t n);
+static char *gen_prompt(void);
 static void add_newline(char **buf);
 static int setup_signals(void);
 cmd *def_cmd(void);
@@ -30,25 +31,17 @@ cmd *def_cmd(void);
 
 int main(void)
 {
-    char p[PROMPT_LEN], *buf;
     // Use tab for shell completion
     rl_bind_key('\t', rl_complete);
 
-    if (setup_signals() != 0) {
-        perror(NAME);
-        return 1;
-    }
-
-    // Create hash table of internal commands
-    if (initialize_internals() != 0) {
-        fprintf(stderr, "Error initializing %s. Quitting\n", NAME);
-        exit(1);
-    }
+    Stopif(setup_signals() != 0, return 1, strerror(errno));
+    Stopif(initialize_internals() != 0, return 1, "Could not initialize internals");
 
     // Ctrl_c returns control flow to here
     while (sigsetjmp(sigbuf,1) != 0);
 
-    while (gen_prompt(p, PROMPT_LEN), buf = readline(p)) {
+    char *buf, *p;
+    while ((p = gen_prompt()), buf = readline(p)) {
         cmd *crawler = def_cmd();
         add_history(buf);
 
@@ -56,33 +49,36 @@ int main(void)
         YY_BUFFER_STATE b = yy_scan_string(buf);
 
         if ((yyparse(crawler, 1) == 0) && *crawler->argv) {
-            exit_code = run_cmd(crawler);
+            exit_code = run_cmd(crawler); // Mutate global variable
         }
 
         // Cleanup
         yy_delete_buffer(b);
         free_cmds(crawler);
-        free(buf);
+        Free_all(buf, p);
     }
 
-    cleanup_internals();
+    Free(p);
     return exit_code;
 }
 
 // Creates shell prompt based on username and current directory
-static void gen_prompt(char *p, size_t n)
+static char *gen_prompt(void)
 {
+    char *p = NULL;
     char *user = getenv("USER");
     char *dir = getcwd(NULL, 1024);
     char sym = (strcmp(user, "root")) ? '$' : '#';
-    snprintf(p, n,"%d [%s:%s] %c ", exit_code, user, dir, sym);
-    free(dir);
+    Stopif(asprintf(&p, "%d [%s:%s] %c ", exit_code, user, dir, sym) == -1, _Exit(2), "Memory allocation error. Quiting");
+    Free(dir);
+    return p;
 }
 
 // Create a single cmd that takes input from stdin and outputs to stdout
 cmd *def_cmd(void)
 {
     cmd *ret = calloc(1, sizeof (cmd));
+    Stopif(!ret, _Exit(2), "Memory allocation error. Quiting.");
     ret->out = 1;
     ret->wait = 1;
     return ret;
@@ -96,17 +92,20 @@ static void signal_handle(int signo)
             puts("");
             siglongjmp(sigbuf, 1); // Print new line and ignore SIGINT
         }
+        break;
     case SIGCHLD:
         waitpid(-1, NULL , WNOHANG | WUNTRACED);
+        break;
     }
 }
 
 // Grammar expects newline and readline doesn't supply it
 static void add_newline(char **buf)
 {
-    size_t len = strlen(*buf);
-    *buf = realloc(*buf, (len + 2) * sizeof **buf);
-    *buf = strcat(*buf, "\n");
+    char *nbuf;
+    Stopif(asprintf(&nbuf, "%s\n", *buf) == -1, _Exit(2), "Memory allocation error. Quitting");
+    Free(*buf);
+    *buf = nbuf;
 }
 
 static int setup_signals(void)

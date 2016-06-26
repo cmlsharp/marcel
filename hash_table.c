@@ -1,76 +1,74 @@
 #include <stdlib.h>
 #include <string.h>
 #include "hash_table.h"
+#include "msh_macros.h"
 
-static unsigned long get_index(char const *str, size_t size);
+static unsigned long get_index(char const *key, size_t size);
 
-
-int add_node(cmd_func f, char const *s, node **table)
+int add_node(void *v, char const *k, hash_table *t)
 {
-    if (!table) {
+    if (!t || !t->nodes) {
         return -1;
     }
-    unsigned long i = get_index(s, TABLE_SIZE);
-    node *crawler = NULL;
+
+    if (t->size + 1 >= t->capacity) {
+        node **tmp = realloc(t->nodes, t->capacity * GROWTH_FACTOR);
+        if (!tmp) return -1;
+        t->nodes = tmp;
+    }
 
     node *new = malloc(sizeof (node));
     if (!new) {
         return -1;
     }
 
-    if (!table[i]) {
-        table[i] = new;
-        crawler = table[i];
-    } else {
-        crawler = table[i];
-        while (crawler->next) {
-            crawler = crawler->next;
-        }
-        crawler->next = new;
-        crawler = crawler->next;
-    }
-    crawler->f = f;
-    crawler->s = s;
-    crawler->next = NULL;
+    new->key = k;
+    new->value = v;
+    unsigned long i = get_index(k, t->capacity);
+    new->next = t->nodes[i];
+
+    t->nodes[i] = new;
+    t->size++;
     return 0;
 }
 
-cmd_func find_node(char const *s, node **table)
+void *find_node(char const *k, hash_table const *t)
 {
-    if (!table) {
+    if (!t || !t->nodes) {
         return NULL;
     }
-    node *crawler = table[get_index(s, TABLE_SIZE)];
+    node *crawler = t->nodes[get_index(k, t->capacity)];
     while (crawler) {
-        if (strcmp(crawler->s, s) == 0) {
-            return crawler->f;
+        if (strcmp(crawler->key, k) == 0) {
+            return crawler->value;
         }
         crawler = crawler->next;
     }
     return NULL;
 }
 
-void free_table(node **table)
+void free_table(hash_table *t)
 {
-    if (!table) {
+    if (!t) {
         return;
     }
-    for (size_t i = 0; i < TABLE_SIZE; i++) {
-        node *crawler = table[i];
+    for (size_t i = 0; i < t->size; i++) {
+        node *crawler = t->nodes[i];
         while (crawler) {
             node *next = crawler->next;
-            free(crawler);
+            Free(crawler);
             crawler = next;
         }
     }
+    Free(t->nodes);
 }
 
 // Modified djb2
-static unsigned long get_index(char const *str, size_t size)
+static unsigned long get_index(char const *key, size_t size)
 {
     unsigned long hash = 5381;
     int c;
-    while ((c = *str++)) {
+    while ((c = *key++)) {
         hash = ((hash << 5) + hash) + c;
     }
     return hash & (size - 1);
