@@ -1,17 +1,15 @@
-#include <errno.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <errno.h> // errno
+#include <stdio.h> // close
+#include <stdlib.h> // calloc, exit, close
+#include <string.h> // strerror
 
-#include <sys/types.h>
-#include <sys/wait.h>
-#include <unistd.h>
+#include <sys/types.h> // pid_t
+#include <sys/wait.h> // waitpid, WIF*
+#include <unistd.h> // close, dup
 
-#include "msh_execute.h"
-#include "msh_macros.h"
-#include "hash_table.h"
-
-#define NUM_BUILTINS (sizeof builtin_names / sizeof (char*))
+#include "msh_execute.h" // cmd_func
+#include "msh_macros.h" // Stopif, Free, Arr_len
+#include "hash_table.h" // hash_table, add_node, find_node, free_table
 
 static int msh_cd(cmd const *c);
 static int exec_cmd(cmd const *c);
@@ -42,7 +40,7 @@ int initialize_internals(void)
 
     // NOTE: We are mixing data pointers and function pointers here. ISO C
     // forbids this but it's fine in POSIX
-    for (size_t i = 0; i < NUM_BUILTINS; i++) {
+    for (size_t i = 0; i < Arr_len(builtin_names); i++) {
         if (add_node(builtin_funcs[i], builtin_names[i], &t) != 0) {
             return -1;
         }
@@ -93,10 +91,14 @@ int run_cmd(cmd *const c)
     return ret;
 }
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wreturn-type"
 static int exec_cmd(cmd const *c)
 {
     int status;
     pid_t p = fork();
+
+    Stopif(p < 0, return 1, strerror(errno));
 
     if (p==0) { // Child
         dup2(c->in, STDIN_FILENO);
@@ -110,12 +112,10 @@ static int exec_cmd(cmd const *c)
             waitpid(p, &status, WUNTRACED);
         } while (!WIFEXITED(status) && !WIFSIGNALED(status) && !WIFSTOPPED(status));
         return WEXITSTATUS(status); // Return exit code
-    } else {
-        perror(NAME);
     }
-
-    return 1;
 }
+#pragma GCC diagnostic pop
+#pragma GCC diagnostic pop
 
 static int msh_cd(cmd const *c)
 {

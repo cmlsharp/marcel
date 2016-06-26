@@ -2,8 +2,8 @@ CC = gcc
 CFLAGS = -O0 -Wall -ggdb3 -Werror
 EXE = msh
 LIBS = -lreadline -lfl
-SRCS = msh.tab.c lex.yy.c msh.c msh_internals.c hash_table.c 
-HDRS = msh.tab.h lex.yy.h msh.h msh_internals.h hash_table.h msh_macros.h
+SRCS = msh.tab.c lex.yy.c msh.c msh_execute.c hash_table.c msh_signals.c
+HDRS = msh.tab.h lex.yy.h msh.h msh_execute.h hash_table.h msh_macros.h msh_signals.h
 OBJS = $(SRCS:.c=.o)
 
 %.c: %.y

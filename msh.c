@@ -1,32 +1,26 @@
 #define _GNU_SOURCE // asprintf
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <setjmp.h>
-#include <assert.h>
+#include <stdio.h> // readline
+#include <stdlib.h> // _Exit, calloc, getenv
+#include <string.h> // strerror, strcmp
 
-#include <signal.h>
-#include <unistd.h>
-#include <sys/wait.h>
+#include <unistd.h> // getcwd
 
-#include <readline/readline.h>
-#include <readline/history.h>
+#include <readline/readline.h> // readline, rl_complete
+#include <readline/history.h> // add_history
 
-#include "msh.h"
-#include "msh_internals.h"
-#include "msh_macros.h"
-#include "msh.tab.h" // 
-#include "lex.yy.h" // YY_BUFFER_STATE, yy_delete_buffer
+#include "msh.h" // cmd
+#include "msh_execute.h" // run_cmd, initialize_internals, free_cmds
+#include "msh_macros.h" // Stopif, Free
+#include "msh_signals.h" // setup_signals, Sigint_reentry
+#include "msh.tab.h" // yyparse
+#include "lex.yy.h" // YY_BUFFER_STATE, yy_delete_buffer, yy_scan_string
 
 int exit_code = 0;
-sigjmp_buf sigbuf;
 
-static void signal_handle(int signo);
 static char *gen_prompt(void);
 static char *get_input(void);
 static void add_newline(char **buf);
-static int setup_signals(void);
 cmd *def_cmd(void);
 
 
@@ -39,7 +33,7 @@ int main(void)
     Stopif(initialize_internals() != 0, return 1, "Could not initialize internals");
 
     // Ctrl_c returns control flow to here
-    while (sigsetjmp(sigbuf,1) != 0);
+    Sigint_reentry();
 
     char *buf = NULL;
     while ((buf = get_input())) {
@@ -48,8 +42,11 @@ int main(void)
 
         add_newline(&buf);
         YY_BUFFER_STATE b = yy_scan_string(buf);
-
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wimplicit-function-declaration"
         if ((yyparse(crawler, 1) == 0) && *crawler->argv) {
+#pragma GCC diagnostic pop
+#pragma GCC diagnostic pop
             exit_code = run_cmd(crawler); // Mutate global variable
         }
 
@@ -93,20 +90,6 @@ cmd *def_cmd(void)
     return ret;
 }
 
-static void signal_handle(int signo)
-{
-    switch (signo) {
-    case SIGINT:
-        if (signo == SIGINT) {
-            puts("");
-            siglongjmp(sigbuf, 1); // Print new line and ignore SIGINT
-        }
-        break;
-    case SIGCHLD:
-        waitpid(-1, NULL , WNOHANG | WUNTRACED);
-        break;
-    }
-}
 
 // Grammar expects newline and readline doesn't supply it
 static void add_newline(char **buf)
@@ -117,13 +100,3 @@ static void add_newline(char **buf)
     *buf = nbuf;
 }
 
-static int setup_signals(void)
-{
-    struct sigaction act = {0};
-    act.sa_handler = signal_handle;
-    if (sigemptyset(&act.sa_mask) == -1) {
-        return 1;
-    }
-    return ((sigaction(SIGINT, &act, NULL) == -1) ||
-            (sigaction(SIGCHLD, &act, NULL)  == -1));
-}

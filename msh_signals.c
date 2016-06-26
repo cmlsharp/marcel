@@ -27,7 +27,7 @@ sigfunc funcs[]   = { &handle_sigint, &handle_sigchld };
 
 int setup_signals(void)
 {
-    size_t len = ARR_LEN(signals);
+    size_t len = Arr_len(signals);
     struct sigaction act = {0};
     if (sigemptyset(&act.sa_mask) == -1) return 1;
 

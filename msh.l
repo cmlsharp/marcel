@@ -2,6 +2,7 @@
 #include <string.h>
 #include "msh.tab.h"
 #include "msh.h"
+
 #pragma GCC diagnostic ignored "-Wunused-function"
 %}
 

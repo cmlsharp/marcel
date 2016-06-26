@@ -9,13 +9,13 @@
 
 #include "msh.h"
 #include "msh_macros.h"
-#define YYDEBUG 1
-#pragma GCC diagnostic ignored "-Wreturn-type"
-#pragma GCC diagnostic ignored "-Wimplicit-function-declaration"
+#include "msh.tab.h"
+#include "lex.yy.h"
 
 extern int arg_index;
 extern cmd *first;
 
+int yyerror (cmd *crawler, int sentinel, char const *s);
 %}
 
 %code requires {
@@ -112,9 +112,14 @@ args:
 
 int arg_index = 1;
 cmd *first = NULL;
-int yyerror (char *s)
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wreturn-type"
+int yyerror (cmd *crawler, int sentinel, char const *s)
 {
-    fprintf(stderr, "%s: syntax error\n", NAME);
+    fprintf(stderr, "%s: %s\n", NAME, s);
 }
+#pragma GCC diagnostic pop
+#pragma GCC diagnostic pop
 
 /*yydebug = 1;*/
