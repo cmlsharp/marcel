@@ -12,11 +12,11 @@
 #include "msh.h" // cmd
 #include "msh_execute.h" // run_cmd, initialize_internals, free_cmds
 #include "msh_macros.h" // Stopif, Free
-#include "msh_signals.h" // setup_signals, Sigint_reentry
+#include "msh_signals.h" // setup_signals
 #include "msh.tab.h" // yyparse
 #include "lex.yy.h" // YY_BUFFER_STATE, yy_delete_buffer, yy_scan_string
 
-int exit_code = 0;
+int volatile exit_code = 0;
 
 static char *gen_prompt(void);
 static char *get_input(void);

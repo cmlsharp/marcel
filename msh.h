@@ -7,7 +7,7 @@
 #include <sys/types.h>
 
 // Unfortunately this is global for simplicity's sake
-extern int exit_code;
+extern int volatile exit_code;
 
 // Struct to model a single command
 typedef struct cmd {
