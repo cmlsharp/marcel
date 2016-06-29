@@ -1,26 +1,67 @@
 #include <stdlib.h> // malloc, realloc
 #include <string.h> // strcmp
 #include "hash_table.h" // hash_table, node
-#include "msh_macros.h" // Stopif, Free
+#include "msh_macros.h" // Free
 
+#ifndef SIZE_MAX
+#define SIZE_MAX ((size_t) -1)
+#endif
+
+#define TABLE_GROWTH_FACTOR 2
 static unsigned long get_index(char const *key, size_t size);
 
-int add_node(void *v, char const *k, hash_table *t)
+hash_table *new_table(size_t size)
 {
-    if (!t || !t->nodes) {
-        return -1;
+    if (size == 0) return NULL;
+    hash_table *ret = malloc(sizeof *ret);
+    if (!ret) return NULL;
+    ret->nodes = calloc(size, sizeof (node*));
+    if (!ret->nodes) {
+        free(ret);
+        return NULL;
     }
+    ret->size = 0;
+    ret->capacity = size;
+    return ret;
+}
 
-    if (t->size + 1 >= t->capacity) {
-        node **tmp = realloc(t->nodes, t->capacity * GROWTH_FACTOR);
-        if (!tmp) return -1;
-        t->nodes = tmp;
+void delete_node(char const *k, hash_table *t)
+{
+   node *crawler = t->nodes[get_index(k, t->capacity)];
+   node *prev = NULL;
+   while (crawler) {
+       if (strcmp(k, crawler->key) == 0) {
+           if (prev) prev->next = crawler->next;
+           Free(crawler);
+           t->size--;
+           return;
+       }
+   }
+}
+
+static _Bool grow_table(hash_table *t) 
+{
+    if (t->capacity < SIZE_MAX / TABLE_GROWTH_FACTOR) {
+        t->capacity *= TABLE_GROWTH_FACTOR;
+    } else if (t->capacity < SIZE_MAX) {
+        t->capacity = SIZE_MAX;
+    } else {
+        return 0;
     }
+    node **tmp = realloc(t->nodes, t->capacity);
+    if (!tmp) return 0;
+    t->nodes = tmp;
+    return 1;
+
+}
+
+int add_node(char const *k, void *v, hash_table *t)
+{
+    if (!t || !t->nodes) return -1;
+    if (t->size + 1 >= t->capacity && !grow_table(t)) return -1;
 
     node *new = malloc(sizeof (node));
-    if (!new) {
-        return -1;
-    }
+    if (!new) return -1;
 
     new->key = k;
     new->value = v;
@@ -47,21 +88,23 @@ void *find_node(char const *k, hash_table const *t)
     return NULL;
 }
 
-void free_table(hash_table *t)
+void free_table(hash_table **t)
 {
     if (!t) {
         return;
     }
-    for (size_t i = 0; i < t->capacity; i++) {
-        node *crawler = t->nodes[i];
+    for (size_t i = 0; i < (*t)->capacity; i++) {
+        node *crawler = (*t)->nodes[i];
         while (crawler) {
             node *next = crawler->next;
             Free(crawler);
             crawler = next;
         }
     }
-    Free(t->nodes);
+    Free((*t)->nodes);
+    Free(*t);
 }
+
 
 // Modified djb2
 static unsigned long get_index(char const *key, size_t size)

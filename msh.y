@@ -9,6 +9,7 @@
 
 #include "msh.h"
 #include "msh_macros.h"
+#include "msh_children.h"
 #include "msh.tab.h"
 #include "lex.yy.h"
 
@@ -39,7 +40,11 @@ cmd_line:
     ;
 
 bkg:
-    BKG {crawler->wait = 0;}
+    BKG {
+        Stopif(num_bkg_proc() == MAX_BKG_PROC, YYABORT, \
+        "Maximum background processes reached. Aborting.");
+        crawler->wait = 0;
+    }
     | 
     ;
 

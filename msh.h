@@ -4,6 +4,8 @@
 #define NAME "msh"
 #define MAX_ARGS 256
 
+#include <sys/types.h>
+
 // Unfortunately this is global for simplicity's sake
 extern int exit_code;
 
@@ -12,7 +14,7 @@ typedef struct cmd {
     char *argv[MAX_ARGS]; // Command to execute and its arguments
     int in; // File descriptor of input
     int out; // File descriptor of output
-    int wait; // Wait for child process to finish
+    _Bool wait; // Wait for child process to finish
     struct cmd *next; // Pointer to next piped cmd
 } cmd;
 

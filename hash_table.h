@@ -4,7 +4,6 @@
 #include "msh_execute.h"
 
 #define TABLE_INIT_SIZE 1024 
-#define GROWTH_FACTOR 2
 
 
 typedef struct node {
@@ -21,8 +20,10 @@ typedef struct hash_table {
 
 
 
-int add_node(void *v, char const *k, hash_table *t);
+hash_table *new_table(size_t size);
+int add_node(char const *k, void *v, hash_table *t);
 void *find_node(char const *k, hash_table const *t);
-void free_table(hash_table *t);
+void delete_node(char const *k, hash_table *t);
+void free_table(hash_table **t);
 
 #endif

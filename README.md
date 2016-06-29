@@ -11,11 +11,12 @@ Practice implementation of a shell
 * Sane lexing + parsing (via flex and bison)
     * Supports quoted strings
 * Background jobs
+* Keeping track of background jobs
 
 ### What isn't:
 * Setting environment variables
 * Escape sequences
-* Keeping track of background jobs
 * stderr redirection
 * Defining aliases/functions
 * Anything else not mentioned in the above section
+* Unit testing

@@ -32,8 +32,6 @@ int main(void)
     Stopif(setup_signals() != 0, return 1, strerror(errno));
     Stopif(initialize_internals() != 0, return 1, "Could not initialize internals");
 
-    // Ctrl_c returns control flow to here
-    Sigint_reentry();
 
     char *buf = NULL;
     while ((buf = get_input())) {

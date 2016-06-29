@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <errno.h> // errno
 #include <stdio.h> // close
 #include <stdlib.h> // calloc, exit, close
@@ -7,9 +8,10 @@
 #include <sys/wait.h> // waitpid, WIF*
 #include <unistd.h> // close, dup
 
+#include "hash_table.h" // hash_table, add_node, find_node, free_table
+#include "msh_children.h" // add_bkg_proc, del_bkg_proc
 #include "msh_execute.h" // cmd_func
 #include "msh_macros.h" // Stopif, Free, Arr_len
-#include "hash_table.h" // hash_table, add_node, find_node, free_table
 
 static int msh_cd(cmd const *c);
 static int exec_cmd(cmd const *c);
@@ -29,19 +31,16 @@ cmd_func const builtin_funcs[] = {
 };
 
 // Hash table for shell builtins
-hash_table t;
+hash_table *t;
 
 // Create hashtable of shell builtins
 int initialize_internals(void)
 {
-    t.nodes = calloc(TABLE_INIT_SIZE, sizeof (node*));
-    if (!t.nodes) return -1;
-    t.capacity = TABLE_INIT_SIZE;
-
+    t = new_table(TABLE_INIT_SIZE);
     // NOTE: We are mixing data pointers and function pointers here. ISO C
     // forbids this but it's fine in POSIX
     for (size_t i = 0; i < Arr_len(builtin_names); i++) {
-        if (add_node(builtin_funcs[i], builtin_names[i], &t) != 0) {
+        if (add_node(builtin_names[i], builtin_funcs[i], t) != 0) {
             return -1;
         }
     }
@@ -78,7 +77,7 @@ int run_cmd(cmd *const c)
     while (crawler) {
         // Check if cmd is builtin
         // Mixing data/function pointers again
-        cmd_func f = find_node(*crawler->argv, &t);
+        cmd_func f = find_node(*crawler->argv, t);
         ret = (f) ? f(crawler) : exec_cmd(crawler);
         if (crawler->in != 0) {
             close(crawler->in);
@@ -106,8 +105,13 @@ static int exec_cmd(cmd const *c)
         Stopif(execvp(*c->argv, c->argv) == -1, {free_cmds((cmd *) c); exit(-1);}, strerror(errno));
     } else if (p>0) {
         if (!c->wait) {
+            size_t job_num = add_bkg_proc(p);
+            Stopif(job_num == 0, return 1, "Maximum number of background jobs reached");
+            printf("Background job number [%zu] created\n", job_num);
             return 0;
         }
+        assert(!get_active_child());
+        set_active_child(p);
         do {
             waitpid(p, &status, WUNTRACED);
         } while (!WIFEXITED(status) && !WIFSIGNALED(status) && !WIFSTOPPED(status));

@@ -1,6 +1,7 @@
 #ifndef MSH_EXEC_H
 #define MSH_EXEC_H
 
+#include <sys/types.h>
 #include "msh.h"
 
 // Builtin function
