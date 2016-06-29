@@ -1,3 +1,4 @@
+#define _XOPEN_SOURCE
 #include <setjmp.h>
 #include <stdio.h>
 #include <signal.h>
@@ -18,22 +19,18 @@ static void handle_signals(int signo)
         SIG_IGN;
         break;
     case SIGCHLD:
-        while ((p = waitpid(-1, NULL, WNOHANG | WUNTRACED))) {
+        while ((p = waitpid(-1, NULL, WNOHANG | WUNTRACED)) > 0) {
             if (p == get_active_child()) {
                 reset_active_child();
                 continue;
             }
 
-            if (p == -1) {
-                reset_active_child();
-                break;
-            }
-
             size_t job_num = del_bkg_proc(p);
             printf("[%zu] completed\n", job_num);
         }
+        break;
     }
-        
+
 }
 
 

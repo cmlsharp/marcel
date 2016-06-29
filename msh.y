@@ -57,7 +57,7 @@ io_mod:
     IN WORD {
         if (crawler->in == 0) {
             int f = open($2, O_RDONLY);
-            Stopif(f == -1, { Free($2); YYABORT; } , strerror(errno));
+            Stopif(f == -1, { Free($2); YYABORT; } , "%s", strerror(errno));
             first->in = f;
         }
         Free($2);
@@ -65,7 +65,7 @@ io_mod:
     | OUT_T WORD {
         if (crawler->out == 1) {
             int f = open($2, O_WRONLY | O_CREAT | O_TRUNC, 0644);
-            Stopif(f == -1, { Free($2); YYABORT; } , strerror(errno));
+            Stopif(f == -1, { Free($2); YYABORT; }, "%s",  strerror(errno));
             crawler->out = f;
         }
         Free($2);
@@ -74,7 +74,7 @@ io_mod:
     | OUT_A WORD {
         if (crawler->out == 1) {
             int f = open($2, O_WRONLY | O_CREAT | O_APPEND, 0644);
-            Stopif(f == -1, { Free($2); YYABORT; } , strerror(errno));
+            Stopif(f == -1, { Free($2); YYABORT; }, "%s", strerror(errno));
             crawler->out = f;
         }
         Free($2);
@@ -120,6 +120,8 @@ cmd *first = NULL;
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wreturn-type"
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+
 int yyerror (cmd *crawler, int sentinel, char const *s)
 {
     fprintf(stderr, "%s: %s\n", NAME, s);

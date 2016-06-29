@@ -27,27 +27,26 @@ hash_table *new_table(size_t size)
 
 void delete_node(char const *k, hash_table *t)
 {
-   node *crawler = t->nodes[get_index(k, t->capacity)];
-   node *prev = NULL;
-   while (crawler) {
-       if (strcmp(k, crawler->key) == 0) {
-           if (prev) prev->next = crawler->next;
-           Free(crawler);
-           t->size--;
-           return;
-       }
-   }
+    node *crawler = t->nodes[get_index(k, t->capacity)];
+    node *prev = NULL;
+    while (crawler) {
+        if (strcmp(k, crawler->key) == 0) {
+            if (prev) prev->next = crawler->next;
+            Free(crawler);
+            t->size--;
+            return;
+        }
+    }
 }
 
-static _Bool grow_table(hash_table *t) 
+static _Bool grow_table(hash_table *t)
 {
-    if (t->capacity < SIZE_MAX / TABLE_GROWTH_FACTOR) {
+    if (t->capacity < SIZE_MAX / TABLE_GROWTH_FACTOR)
         t->capacity *= TABLE_GROWTH_FACTOR;
-    } else if (t->capacity < SIZE_MAX) {
+    else if (t->capacity < SIZE_MAX)
         t->capacity = SIZE_MAX;
-    } else {
+    else
         return 0;
-    }
     node **tmp = realloc(t->nodes, t->capacity);
     if (!tmp) return 0;
     t->nodes = tmp;
@@ -75,14 +74,12 @@ int add_node(char const *k, void *v, hash_table *t)
 
 void *find_node(char const *k, hash_table const *t)
 {
-    if (!t || !t->nodes) {
+    if (!t || !t->nodes)
         return NULL;
-    }
     node *crawler = t->nodes[get_index(k, t->capacity)];
     while (crawler) {
-        if (strcmp(crawler->key, k) == 0) {
+        if (strcmp(crawler->key, k) == 0)
             return crawler->value;
-        }
         crawler = crawler->next;
     }
     return NULL;
@@ -90,9 +87,8 @@ void *find_node(char const *k, hash_table const *t)
 
 void free_table(hash_table **t)
 {
-    if (!t) {
+    if (!t)
         return;
-    }
     for (size_t i = 0; i < (*t)->capacity; i++) {
         node *crawler = (*t)->nodes[i];
         while (crawler) {
@@ -111,8 +107,7 @@ static unsigned long get_index(char const *key, size_t size)
 {
     unsigned long hash = 5381;
     int c;
-    while ((c = *key++)) {
+    while ((c = *key++))
         hash = ((hash << 5) + hash) + c;
-    }
     return hash & (size - 1);
 }

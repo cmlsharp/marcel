@@ -40,9 +40,8 @@ int initialize_internals(void)
     // NOTE: We are mixing data pointers and function pointers here. ISO C
     // forbids this but it's fine in POSIX
     for (size_t i = 0; i < Arr_len(builtin_names); i++) {
-        if (add_node(builtin_names[i], builtin_funcs[i], t) != 0) {
+        if (add_node(builtin_names[i], builtin_funcs[i], t) != 0)
             return -1;
-        }
     }
 
     if (atexit(cleanup_internals) != 0) return -1;
@@ -59,9 +58,8 @@ void cleanup_internals(void)
 void free_cmds(cmd *crawler)
 {
     while (crawler) {
-        for (size_t i = 0; crawler->argv[i] && i < MAX_ARGS; i++) {
+        for (size_t i = 0; crawler->argv[i] && i < MAX_ARGS; i++)
             Free(crawler->argv[i]);
-        }
         cmd *next = crawler->next;
         Free(crawler);
         crawler = next;
@@ -79,12 +77,10 @@ int run_cmd(cmd *const c)
         // Mixing data/function pointers again
         cmd_func f = find_node(*crawler->argv, t);
         ret = (f) ? f(crawler) : exec_cmd(crawler);
-        if (crawler->in != 0) {
+        if (crawler->in != 0)
             close(crawler->in);
-        }
-        if (crawler->out != 1) {
+        if (crawler->out != 1)
             close(crawler->out);
-        }
         crawler = crawler->next;
     }
     return ret;
@@ -94,15 +90,16 @@ int run_cmd(cmd *const c)
 #pragma GCC diagnostic ignored "-Wreturn-type"
 static int exec_cmd(cmd const *c)
 {
-    int status;
+    int status = 0;
     pid_t p = fork();
 
-    Stopif(p < 0, return 1, strerror(errno));
+    Stopif(p < 0, return 1, "%s", strerror(errno));
 
     if (p==0) { // Child
         dup2(c->in, STDIN_FILENO);
         dup2(c->out, STDOUT_FILENO);
-        Stopif(execvp(*c->argv, c->argv) == -1, {free_cmds((cmd *) c); exit(-1);}, strerror(errno));
+        Stopif(execvp(*c->argv, c->argv) == -1, {free_cmds((cmd *) c); exit(-1);},"%s",
+               strerror(errno));
     } else if (p>0) {
         if (!c->wait) {
             size_t job_num = add_bkg_proc(p);
@@ -115,6 +112,7 @@ static int exec_cmd(cmd const *c)
         do {
             waitpid(p, &status, WUNTRACED);
         } while (!WIFEXITED(status) && !WIFSIGNALED(status) && !WIFSTOPPED(status));
+        reset_active_child();
         return WEXITSTATUS(status); // Return exit code
     }
 }
@@ -125,7 +123,7 @@ static int msh_cd(cmd const *c)
 {
     // cd to homedir if no directory specified
     char *dir = (c->argv[1]) ? c->argv[1] : getenv("HOME");
-    Stopif(chdir(dir) == -1, return 1, strerror(errno));
+    Stopif(chdir(dir) == -1, return 1, "%s", strerror(errno));
     return 0;
 }
 

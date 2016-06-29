@@ -29,7 +29,7 @@ int main(void)
     // Use tab for shell completion
     rl_bind_key('\t', rl_complete);
 
-    Stopif(setup_signals() != 0, return 1, strerror(errno));
+    Stopif(setup_signals() != 0, return 1, "%s", strerror(errno));
     Stopif(initialize_internals() != 0, return 1, "Could not initialize internals");
 
 
@@ -40,11 +40,7 @@ int main(void)
 
         add_newline(&buf);
         YY_BUFFER_STATE b = yy_scan_string(buf);
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wimplicit-function-declaration"
         if ((yyparse(crawler, 1) == 0) && *crawler->argv) {
-#pragma GCC diagnostic pop
-#pragma GCC diagnostic pop
             exit_code = run_cmd(crawler); // Mutate global variable
         }
 
@@ -73,7 +69,8 @@ static char *gen_prompt(void)
     char *user = getenv("USER");
     char *dir = getcwd(NULL, 1024);
     char sym = (strcmp(user, "root")) ? '$' : '#';
-    Stopif(asprintf(&p, "%d [%s:%s] %c ", exit_code, user, dir, sym) == -1, _Exit(2), "Memory allocation error. Quiting");
+    Stopif(asprintf(&p, "%d [%s:%s] %c ", exit_code, user, dir, sym) == -1,
+           _Exit(2), "Memory allocation error. Quiting");
     Free(dir);
     return p;
 }
@@ -93,7 +90,8 @@ cmd *def_cmd(void)
 static void add_newline(char **buf)
 {
     char *nbuf;
-    Stopif(asprintf(&nbuf, "%s\n", *buf) == -1, _Exit(2), "Memory allocation error. Quitting");
+    Stopif(asprintf(&nbuf, "%s\n", *buf) == -1, _Exit(2),
+           "Memory allocation error. Quitting");
     Free(*buf);
     *buf = nbuf;
 }

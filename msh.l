@@ -3,7 +3,10 @@
 #include "msh.tab.h"
 #include "msh.h"
 
+#pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-function"
+#pragma GCC diagnostic ignored "-Wimplicit-function-declaration"
+#pragma GCC diagnostic ignored "-Wint-conversion"
 %}
 
 %%
@@ -26,3 +29,8 @@
     yylval.str = strdup(yytext);
     return WORD;
 }
+
+%%
+
+#pragma GCC diagnostic pop
+#pragma GCC diagnostic pop
