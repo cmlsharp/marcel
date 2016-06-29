@@ -19,8 +19,14 @@ static void handle_signals(int signo)
         SIG_IGN;
         break;
     case SIGCHLD:
-        while ((p = waitpid(-1, NULL, WNOHANG | WUNTRACED)) > 0) {
-            if (p == get_active_child()) {
+        for (;;) {
+            p = waitpid(-1, NULL, WNOHANG | WUNTRACED);
+            if (p == 0) { // Active child generates  SIGCHLD but background process still running
+                break;
+            } else if (p == -1) { // No children (active child already terminated but SIGCHLD still thrown)
+                reset_active_child();
+                break;
+            } else if (p == get_active_child()) { // Active child not cleaned up (usually because it is signaled). Not sure why this happens
                 reset_active_child();
                 continue;
             }

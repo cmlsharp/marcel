@@ -112,7 +112,6 @@ static int exec_cmd(cmd const *c)
         do {
             waitpid(p, &status, WUNTRACED);
         } while (!WIFEXITED(status) && !WIFSIGNALED(status) && !WIFSTOPPED(status));
-        reset_active_child();
         return WEXITSTATUS(status); // Return exit code
     }
 }

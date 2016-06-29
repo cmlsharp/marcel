@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -Wall -O0 -ggdb3 -Wextra -Werror -pipe -fstack-protector -Wl,-zrelro -Wl,-z,now -Wformat-security -fsanitize=address -fomit-frame-pointer -std=c11 
+CFLAGS = -Wall -O0 -ggdb3 -Wextra -Werror -pipe -fstack-protector -Wl,-zrelro -Wl,-z,now -Wformat-security -std=c11
 EXE = msh
 LIBS = -lreadline -lfl
 SRCS = msh.tab.c lex.yy.c msh.c msh_execute.c hash_table.c msh_signals.c msh_children.c
