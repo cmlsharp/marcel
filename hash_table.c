@@ -41,12 +41,14 @@ void delete_node(char const *k, hash_table *t)
 
 static _Bool grow_table(hash_table *t)
 {
-    if (t->capacity < SIZE_MAX / TABLE_GROWTH_FACTOR)
+    if (t->capacity < SIZE_MAX / TABLE_GROWTH_FACTOR) {
         t->capacity *= TABLE_GROWTH_FACTOR;
-    else if (t->capacity < SIZE_MAX)
+    } else if (t->capacity < SIZE_MAX) {
         t->capacity = SIZE_MAX;
-    else
+    } else {
         return 0;
+    }
+
     node **tmp = realloc(t->nodes, t->capacity);
     if (!tmp) return 0;
     t->nodes = tmp;
