@@ -1,7 +1,7 @@
 #include <stdlib.h> // malloc, realloc
 #include <string.h> // strcmp
 #include "hash_table.h" // hash_table, node
-#include "msh_macros.h" // Free
+#include "macros.h" // Free
 
 #ifndef SIZE_MAX
 #define SIZE_MAX ((size_t) -1)

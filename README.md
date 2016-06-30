@@ -1,5 +1,5 @@
-#msh
-Practice implementation of a shell
+#Marcel the Shell (with shoes on)
+Practice shell implementation
 
 ### What's done:
 * Command execution

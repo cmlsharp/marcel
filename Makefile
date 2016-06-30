@@ -1,9 +1,9 @@
 CC = gcc
 CFLAGS = -Wall -O0 -ggdb3 -Wextra -Werror -pipe -fstack-protector -Wl,-zrelro -Wl,-z,now -Wformat-security -std=c11
-EXE = msh
+EXE = marcel
 LIBS = -lreadline -lfl
-SRCS = msh.tab.c lex.yy.c msh.c msh_execute.c hash_table.c msh_signals.c msh_children.c
-HDRS = msh.tab.h lex.yy.h msh.h msh_execute.h hash_table.h msh_macros.h msh_signals.h msh_children.h
+SRCS = marcel.tab.c lex.yy.c marcel.c execute.c hash_table.c signals.c children.c
+HDRS = marcel.tab.h lex.yy.h marcel.h execute.h hash_table.h macros.h signals.h children.h
 OBJS = $(SRCS:.c=.o)
 
 %.c: %.y
@@ -11,11 +11,11 @@ OBJS = $(SRCS:.c=.o)
 
 all: $(EXE)
 
-msh.tab.c msh.tab.h: msh.y
-	bison --defines=msh.tab.h --output=msh.tab.c msh.y
+marcel.tab.c marcel.tab.h: marcel.y
+	bison --defines=marcel.tab.h --output=marcel.tab.c marcel.y
 
-lex.yy.c lex.yy.h: msh.l
-	flex --header-file=lex.yy.h msh.l
+lex.yy.c lex.yy.h: marcel.l
+	flex --header-file=lex.yy.h marcel.l
 
 $(EXE): $(OBJS) 
 	$(CC) $(CFLAGS) -o $@ $(SRCS) $(LIBS)
