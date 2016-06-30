@@ -1,7 +1,7 @@
 %{
 #include <string.h>
-#include "msh.tab.h"
-#include "msh.h"
+#include "parser.h"
+#include "marcel.h"
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-function"

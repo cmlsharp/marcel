@@ -13,8 +13,8 @@
 #include "execute.h" // run_cmd, initialize_internals, free_cmds
 #include "macros.h" // Stopif, Free
 #include "signals.h" // setup_signals
-#include "marcel.tab.h" // yyparse
-#include "lex.yy.h" // YY_BUFFER_STATE, yy_delete_buffer, yy_scan_string
+#include "parser.h" // yyparse
+#include "lexer.h" // YY_BUFFER_STATE, yy_delete_buffer, yy_scan_string
 
 #define MAX_PROMPT_LEN 1024
 int volatile exit_code = 0;

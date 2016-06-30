@@ -7,11 +7,11 @@
 #include <fcntl.h>
 #include <unistd.h>
 
-#include "msh.h"
-#include "msh_macros.h"
-#include "msh_children.h"
-#include "msh.tab.h"
-#include "lex.yy.h"
+#include "marcel.h"
+#include "macros.h"
+#include "children.h"
+#include "parser.h"
+#include "lexer.h"
 
 extern int arg_index;
 extern cmd *first;
@@ -20,7 +20,7 @@ int yyerror (cmd *crawler, int sentinel, char const *s);
 %}
 
 %code requires {
-    #include "msh.h"
+    #include "marcel.h"
 }
 
 %union {
