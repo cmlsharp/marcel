@@ -35,7 +35,7 @@ int main(void)
     Stopif(initialize_internals() != 0, return 1, "Could not initialize internals");
 
     // buf, b and crawler must be volatile becasue they are read from/written
-    // to between Sigint_reentry (which calls sigsetbuf) and when sigongjmp 
+    // to between Sigint_reentry (which calls sigsetbuf) and when siglongjmp 
     // could be called in the SIGINT handler. Suboptimal but seemingly
     // necessary.
     char *volatile buf = NULL;

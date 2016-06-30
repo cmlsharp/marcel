@@ -3,7 +3,7 @@
 
 #include <setjmp.h>
 
-// This variable is only accessed via the two macros beolow
+// This variable is only accessed via the two macros below
 extern sigjmp_buf _sigbuf;
 
 #define SIGINT_EXIT_CODE -1
