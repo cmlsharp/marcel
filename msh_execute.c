@@ -1,4 +1,3 @@
-#include <assert.h>
 #include <errno.h> // errno
 #include <stdio.h> // close
 #include <stdlib.h> // calloc, exit, close
@@ -107,7 +106,6 @@ static int exec_cmd(cmd const *c)
             printf("Background job number [%zu] created\n", job_num);
             return 0;
         }
-        assert(!get_active_child());
         set_active_child(p);
         do {
             waitpid(p, &status, WUNTRACED);

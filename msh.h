@@ -6,7 +6,8 @@
 
 #include <sys/types.h>
 
-// Unfortunately this is global for simplicity's sake
+// This variable is modified only in the main function and the signal handling 
+// function for SIGINT
 extern int volatile exit_code;
 
 // Struct to model a single command

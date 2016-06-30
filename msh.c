@@ -16,9 +16,10 @@
 #include "msh.tab.h" // yyparse
 #include "lex.yy.h" // YY_BUFFER_STATE, yy_delete_buffer, yy_scan_string
 
+#define MAX_PROMPT_LEN 1024
 int volatile exit_code = 0;
 
-static char *gen_prompt(void);
+static void gen_prompt(char *buf);
 static char *get_input(void);
 static void add_newline(char **buf);
 cmd *def_cmd(void);
@@ -29,24 +30,33 @@ int main(void)
     // Use tab for shell completion
     rl_bind_key('\t', rl_complete);
 
+    rl_clear_signals();
     Stopif(setup_signals() != 0, return 1, "%s", strerror(errno));
     Stopif(initialize_internals() != 0, return 1, "Could not initialize internals");
 
-
-    char *buf = NULL;
+    // buf, b and crawler must be volatile becasue they are read from/written
+    // to between Sigint_reentry (which calls sigsetbuf) and when sigongjmp 
+    // could be called in the SIGINT handler. Suboptimal but seemingly
+    // necessary.
+    char *volatile buf = NULL;
+    // SIGINT before first command is executed returns here
+    Sigint_init_reentry();
     while ((buf = get_input())) {
-        cmd *crawler = def_cmd();
+        cmd *volatile crawler = def_cmd();
         add_history(buf);
-
-        add_newline(&buf);
-        YY_BUFFER_STATE b = yy_scan_string(buf);
+        add_newline((char **) &buf);
+        YY_BUFFER_STATE volatile b = yy_scan_string(buf);
         if ((yyparse(crawler, 1) == 0) && *crawler->argv) {
             exit_code = run_cmd(crawler); // Mutate global variable
         }
 
         // Cleanup
-        yy_delete_buffer(b);
-        free_cmds(crawler);
+        Sigint_reentry();
+        
+        // Free and set to NULL to ensure SIGINT in next loop iteration doesn't
+        // result in double free
+        Cleanup(b, yy_delete_buffer);
+        Cleanup(crawler, free_cmds);
         Free(buf);
     }
     return exit_code;
@@ -56,23 +66,20 @@ int main(void)
 // freed. Returns NULL on EOF
 static char *get_input(void)
 {
-    char *p = gen_prompt();
-    char *line = readline(p);
-    Free(p);
+    char prompt_buf[MAX_PROMPT_LEN] = {0};
+    gen_prompt(prompt_buf);
+    char *line = readline(prompt_buf);
     return line;
 }
 
 // Creates shell prompt based on username and current directory
-static char *gen_prompt(void)
+static void gen_prompt(char *buf)
 {
-    char *p = NULL;
     char *user = getenv("USER");
     char *dir = getcwd(NULL, 1024);
     char sym = (strcmp(user, "root")) ? '$' : '#';
-    Stopif(asprintf(&p, "%d [%s:%s] %c ", exit_code, user, dir, sym) == -1,
-           _Exit(2), "Memory allocation error. Quiting");
+    snprintf(buf, MAX_PROMPT_LEN, "%-3d [%s:%s] %c ", (unsigned char) exit_code, user, dir, sym);
     Free(dir);
-    return p;
 }
 
 // Create a single cmd that takes input from stdin and outputs to stdout
