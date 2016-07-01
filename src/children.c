@@ -1,6 +1,5 @@
 #include "children.h" // pid_t
 
-
 typedef struct child_rec {
     pid_t active;
     pid_t bkg[MAX_BKG_PROC];
@@ -26,14 +25,13 @@ size_t add_bkg_proc(pid_t p)
 // no process found.
 size_t del_bkg_proc(pid_t p)
 {
-    size_t i;
-    for (i = 0; i < MAX_BKG_PROC; i++) {
+    for (size_t i = 0; i < MAX_BKG_PROC; i++) {
         if (c_rec.bkg[i] == p) {
             c_rec.bkg[i] = 0;
+            c_rec.count--;
             return i + 1;
         }
     }
-    c_rec.count--;
     return 0;
 }
 

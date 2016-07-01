@@ -1,13 +1,15 @@
 #define _XOPEN_SOURCE
 
-#include <stdio.h>
-#include <signal.h>
+#include <stdio.h> // puts
+#include <signal.h> // SIGINT, SIGCHLD, SIG_IGN, sigaction...
 
-#include <sys/wait.h>
+#include <sys/types.h> // pid_t
+#include <sys/wait.h> // waitpid
 
-#include "children.h"
-#include "signals.h"
-#include "macros.h"
+#include "children.h" // del_bkg_proc, reset_active_child
+#include "macros.h" // Arr_len
+#include "marcel.h" // exit_code
+#include "signals.h" // siglongjmp
 
 int signals[] = { SIGINT, SIGCHLD, SIGQUIT };
 sigjmp_buf _sigbuf;
@@ -52,7 +54,7 @@ static void handle_signals(int signo)
             }
 
             size_t job_num = del_bkg_proc(p);
-            printf("[%zu] completed\n", job_num);
+            printf("[%zu] completed. Exit: %d\n", job_num, WEXITSTATUS(status));
             first_iter = 0;
         }
         break;

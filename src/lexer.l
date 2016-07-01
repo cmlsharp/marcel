@@ -1,7 +1,6 @@
 %{
-#include <string.h>
-#include "parser.h"
-#include "marcel.h"
+#include <string.h> // strdup
+#include "parser.h" // NL, OUT_T, OUT_A...
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-function"

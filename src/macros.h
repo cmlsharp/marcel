@@ -1,9 +1,9 @@
 #ifndef STOPIF_H
 #define STOPIF_H
 
-#include <stdio.h>
-#include "marcel.h"
+#include <stdio.h> // fprintf
 
+// Length of array. _ARR cannot be a pointer
 #define Arr_len(_ARR) (sizeof _ARR / sizeof *_ARR)
 
 // Make error handling easier

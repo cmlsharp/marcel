@@ -21,7 +21,7 @@ HDRS = $(SRCS:.c=.h)
 OBJS = $(addprefix obj/,$(notdir $(SRCS:.c=.o)))
 
 
-all: $(EXE) Makefile
+all: $(EXE)
 
 
 %.c %.h: %.y 

@@ -7,7 +7,7 @@
 typedef struct node {
     void *value; // Pointer to builtin function (or alias)
     char const* key; // Name of function (or alias)
-    struct node *next;
+    struct node *next; // Pointer to next node (in case of conflicts
 } node;
 
 typedef struct hash_table {

@@ -1,24 +1,23 @@
 %{
-#include <errno.h>
-#include <stdio.h>
-#include <stdlib.h>
+#include <errno.h> // errno
 #include <string.h>
 
-#include <fcntl.h>
-#include <unistd.h>
+#include <fcntl.h> // read, write, O_*
+#include <unistd.h> // pipe
 
 #include "marcel.h"
-#include "macros.h"
-#include "children.h"
-#include "parser.h"
-#include "lexer.h"
+#include "macros.h" // Stopif, Free
+#include "children.h" // MAX_BKG_PROC
+#include "lexer.h" // yylex (in bison generated code)
 
 extern int arg_index;
+extern _Bool first_run;
 extern cmd *first;
 
-int yyerror (cmd *crawler, int sentinel, char const *s);
+int yyerror (cmd *crawler, char const *s);
 %}
 
+// Include marcel.h in .c file as well as header
 %code requires {
     #include "marcel.h"
 }
@@ -30,12 +29,12 @@ int yyerror (cmd *crawler, int sentinel, char const *s);
 %token NL OUT_T OUT_A IN BKG PIPE 
 
 %define parse.error verbose
-%parse-param {cmd *crawler} {int sentinel}
+%parse-param {cmd *crawler}
 
 %%
 
 cmd_line:
-    pipes io_mods bkg NL {}
+    pipes io_mods bkg NL {first_run = 1;}
     | NL
     ;
 
@@ -99,8 +98,8 @@ args:
         // E.g. the command:  a b | c d | e f
         //                   ^     ^     ^    <-- reached in those places
         arg_index = 1;
-        if (sentinel) { 
-            sentinel = 0;
+        if (first_run) { 
+            first_run = 0;
             first = crawler;
         } else {
             crawler->next = def_cmd();
@@ -115,17 +114,18 @@ args:
 
 %%
 
+_Bool first_run = 1;
 int arg_index = 1;
 cmd *first = NULL;
 
 #pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wreturn-type"
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 
-int yyerror (cmd *crawler, int sentinel, char const *s)
+int yyerror (cmd *crawler, char const *s)
 {
-    fprintf(stderr, "%s: %s\n", NAME, s);
+    Stopif(1, return 0, "%s", s);
 }
+
 #pragma GCC diagnostic pop
 #pragma GCC diagnostic pop
 

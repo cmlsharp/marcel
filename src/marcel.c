@@ -46,7 +46,7 @@ int main(void)
         add_history(buf);
         add_newline((char **) &buf);
         YY_BUFFER_STATE volatile b = yy_scan_string(buf);
-        if ((yyparse(crawler, 1) == 0) && *crawler->argv) {
+        if ((yyparse(crawler) == 0) && *crawler->argv) {
             exit_code = run_cmd(crawler); // Mutate global variable
         }
 

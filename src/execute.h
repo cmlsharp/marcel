@@ -1,7 +1,7 @@
 #ifndef MSH_EXEC_H
 #define MSH_EXEC_H
 
-#include "marcel.h"
+#include "marcel.h" // cmd
 
 // Builtin function
 typedef int (*cmd_func)(cmd const*);
