@@ -1,28 +1,49 @@
+# Tell make to stop removing intermediate files
+.SECONDARY:
+
 CC = gcc
 CFLAGS = -Wall -O0 -ggdb3 -Wextra -Werror -pipe -fstack-protector -Wl,-zrelro -Wl,-z,now -Wformat-security -std=c11
 EXE = marcel
 LIBS = -lreadline -lfl
+
 SRCDIR = src
 OBJDIR = obj
-BINDIR = bin
-SRCS = $(SRCDIR)/lexer.c $(SRCDIR)/parser.c $(wildcard $(SRCDIR)/*.c) 
-OBJS := $(addprefix obj/,$(notdir $(SRCS:.c=.o)))
+$(shell `mkdir -p $(OBJDIR)`)
 
-all: $(EXE)
+CSRCS = $(wildcard $(SRCDIR)/*.c) 
+BSON = $(patsubst %.y, %.c, $(wildcard $(SRCDIR)/*.y))
+FLEX = $(patsubst %.l, %.c, $(wildcard $(SRCDIR)/*.l))
 
-%.c %.h: %.y
-	bison --defines=$(@:.c=.h) --output=$@ $<
 
-%.c %.h: %.l
-	flex --header-file=$(@:.c=.h) --outfile=$@ $<
+SRCS =  $(BSON) $(FLEX) $(CSRCS)
 
-$(EXE): $(OBJS)
-	$(CC) $(CFLAGS) -o $@ $(OBJS) $(LIBS)
-	rm $(SRCDIR)/parser.h $(SRCDIR)/lexer.h
+HDRS = $(SRCS:.c=.h)
+OBJS = $(addprefix obj/,$(notdir $(SRCS:.c=.o)))
 
-$(OBJDIR)/%.o: $(SRCDIR)/%.c #$(SRCDIR)/%.l $(SRCDIR)/%.y
-	$(CC) $(CFLAGS) -c -o $@ $<
 
-# housekeeping
+all: $(EXE) Makefile
+
+
+%.c %.h: %.y 
+	bison --defines=$(@:.c=.h) --output=$(@:.h=.c) $<
+
+%.c %.h:  %.l 
+	flex --header-file=$(@:.c=.h) --outfile=$(@:.h=.c) $<
+
+
+
+$(EXE): $(OBJS) 
+	$(CC) $(CFLAGS) -o $@ $^ $(LIBS)
+
+
+
+$(OBJDIR)/%.o: $(SRCDIR)/%.c $(HDRS) 
+	$(CC) $(CFLAGS) -MMD -c -o $@ $<
+
+
+-include $(wildcard $(OBJDIR)/*.d)
+
 clean:
-	rm -f core $(EXE) $(OBJDIR)/*.o 
+	rm -f core $(EXE) $(basename $(FLEX)).{h,c} $(basename $(BSON)).{h,c}
+	rm -r $(OBJDIR)
+
