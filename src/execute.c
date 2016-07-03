@@ -10,7 +10,7 @@
 
 #include "marcel.h" // free_cmd
 #include "hash_table.h" // hash_table, add_node, find_node, free_table
-#include "children.h" // add_bkg_proc, del_bkg_proc
+#include "children.h" // add_bkg_child, del_bkg_proc
 #include "execute.h" // cmd_func
 #include "macros.h" // Stopif, Free, Arr_len
 
@@ -94,7 +94,7 @@ static int exec_cmd(cmd const *c)
                strerror(errno));
     } else if (p>0) {
         if (!c->wait) {
-            size_t job_num = add_bkg_proc(p);
+            size_t job_num = add_bkg_child(p);
             Stopif(job_num == 0, return 1, "Maximum number of background jobs reached");
             printf("Background job number [%zu] created\n", job_num);
             return 0;

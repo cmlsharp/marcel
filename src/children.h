@@ -3,11 +3,11 @@
 
 #include <sys/types.h> // pid_t
 
-#define MAX_BKG_PROC 1024
+#define MAX_BKG_CHILD 1024
 
-size_t add_bkg_proc(pid_t p);
-size_t del_bkg_proc(pid_t p);
-size_t num_bkg_proc(void);
+size_t add_bkg_child(pid_t p);
+size_t del_bkg_child(pid_t p);
+size_t num_bkg_child(void);
 
 void set_active_child(pid_t p);
 void reset_active_child(void);

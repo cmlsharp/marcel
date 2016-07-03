@@ -5,10 +5,10 @@
 #include <fcntl.h> // read, write, O_*
 #include <unistd.h> // pipe
 
-#include "children.h" // MAX_BKG_PROC
+#include "children.h" // MAX_BKG_CHILD, num_bkg_child
 #include "lexer.h" // yylex (in bison generated code)
 #include "helpers.h" // grow_array
-#include "marcel.h"
+#include "marcel.h" // cmd
 #include "macros.h" // Stopif, Free
 
 extern size_t arg_index;
@@ -41,7 +41,7 @@ cmd_line:
 
 bkg:
     BKG {
-        Stopif(num_bkg_proc() == MAX_BKG_PROC, YYABORT, \
+        Stopif(num_bkg_child() == MAX_BKG_CHILD, YYABORT, \
         "Maximum background processes reached. Aborting.");
         crawler->wait = 0;
     }

@@ -6,7 +6,7 @@
 #include <sys/types.h> // pid_t
 #include <sys/wait.h> // waitpid
 
-#include "children.h" // del_bkg_proc, reset_active_child
+#include "children.h" // del_bkg_child, reset_active_child
 #include "macros.h" // Arr_len
 #include "marcel.h" // exit_code
 #include "signals.h" // siglongjmp
@@ -53,7 +53,7 @@ static void handle_signals(int signo)
                 continue;
             }
 
-            size_t job_num = del_bkg_proc(p);
+            size_t job_num = del_bkg_child(p);
             printf("[%zu] completed. Exit: %d\n", job_num, WEXITSTATUS(status));
             first_iter = 0;
         }

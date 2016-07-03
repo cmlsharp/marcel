@@ -2,7 +2,7 @@
 
 typedef struct child_rec {
     pid_t active;
-    pid_t bkg[MAX_BKG_PROC];
+    pid_t bkg[MAX_BKG_CHILD];
     size_t count;
 } child_rec;
 
@@ -10,11 +10,11 @@ child_rec volatile c_rec;
 
 // Adds process to record and returns its job number. 0 indicates no available
 // records.
-size_t add_bkg_proc(pid_t p)
+size_t add_bkg_child(pid_t p)
 {
     size_t i;
     for (i = 0; c_rec.bkg[i]; i++) {
-        if (i == MAX_BKG_PROC - 1) return 0;
+        if (i == MAX_BKG_CHILD - 1) return 0;
     }
     c_rec.bkg[i] = p;
     c_rec.count++;
@@ -23,9 +23,9 @@ size_t add_bkg_proc(pid_t p)
 
 // Removes process from record and returns its former job number. 0 indicates
 // no process found.
-size_t del_bkg_proc(pid_t p)
+size_t del_bkg_child(pid_t p)
 {
-    for (size_t i = 0; i < MAX_BKG_PROC; i++) {
+    for (size_t i = 0; i < MAX_BKG_CHILD; i++) {
         if (c_rec.bkg[i] == p) {
             c_rec.bkg[i] = 0;
             c_rec.count--;
@@ -36,7 +36,7 @@ size_t del_bkg_proc(pid_t p)
 }
 
 __attribute__((always_inline))
-inline size_t num_bkg_proc(void)
+inline size_t num_bkg_child(void)
 {
     return c_rec.count;
 }
