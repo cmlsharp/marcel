@@ -9,8 +9,8 @@
 #define Arr_len(ARR) (sizeof (ARR) / sizeof *(ARR))
 
 // Iterate over an array. Modefied version of one found on stackoverflow
-#define _Foreach(ITEM, LIST)                                                \
-    for(size_t KEEP = 1, COUNT = 0, SIZE = Arr_len((LIST));                  \
+#define I_Foreach(ITEM, LIST)                                               \
+    for(size_t KEEP = 1, COUNT = 0, SIZE = Arr_len((LIST));                 \
         KEEP && COUNT != SIZE;                                              \
         KEEP = !KEEP, COUNT++)                                              \
         for (ITEM = (LIST) + COUNT; KEEP; KEEP = !KEEP)                     \
@@ -27,7 +27,7 @@
 // Output:
 // 123
 
-#define Foreach(TYPE, NAME, ...) _Foreach(TYPE *NAME, ((TYPE[]) {__VA_ARGS__})) 
+#define Foreach(TYPE, NAME, ...) I_Foreach(TYPE *NAME, ((TYPE[]) {__VA_ARGS__})) 
 
 // Make error handling easier
 #define Stopif(COND, ACTION, ...)                                           \
