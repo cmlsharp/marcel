@@ -8,7 +8,7 @@
 
 #include "children.h" // del_bkg_child, reset_active_child
 #include "macros.h" // Arr_len
-#include "marcel.h" // exit_code
+#include "marcel.h" // exit_code, M_SIGINT
 #include "signals.h" // siglongjmp
 
 int signals[] = { SIGINT, SIGCHLD, SIGQUIT };
@@ -22,7 +22,7 @@ static void handle_signals(int signo)
 
     switch (signo) {
     case SIGINT:
-        exit_code = SIGINT_EXIT_CODE;
+        exit_code = M_SIGINT;
         puts("");
         siglongjmp(_sigbuf, 1);
         break;

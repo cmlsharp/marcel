@@ -1,7 +1,7 @@
 #define _GNU_SOURCE // dprintf
 #include <errno.h> // errno
 #include <stdio.h> // close
-#include <stdlib.h> // calloc, exit, close
+#include <stdlib.h> // calloc, exit, putenv
 #include <string.h> // strerror
 
 #include <sys/types.h> // pid_t
@@ -90,6 +90,9 @@ static int exec_cmd(cmd const *c)
     if (p==0) { // Child
         dup2(c->in, STDIN_FILENO);
         dup2(c->out, STDOUT_FILENO);
+        for (size_t i = 0; i < c->env.num; i++) {
+            Stopif(putenv(c->env.strs[i]) == -1, /* No action */, "Could not set the following variable/value pair: %s", c->env.strs[i]);
+        }
         Stopif(execvp(c->argv.strs[0], c->argv.strs) == -1, exit(M_FAILED_EXEC),"%s",
                strerror(errno));
     } else if (p>0) {

@@ -15,6 +15,7 @@ extern int volatile exit_code;
 typedef struct str_array {
     char **strs;
     size_t cap; // Size of dynamically allocated array
+    size_t num; // Number of ocupied slots
 } str_array;
 
 // Struct to model a single command
@@ -30,8 +31,9 @@ typedef struct cmd {
 
 enum {
     M_SUCCESS = 0,
-    M_FAILED_EXEC = -1,
-    M_FAILED_ALLOC = -2
+    M_SIGINT = -1,
+    M_FAILED_EXEC = -2,
+    M_FAILED_ALLOC = -3,
 };
 
 cmd *new_cmd(void);

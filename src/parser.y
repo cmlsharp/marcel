@@ -11,7 +11,16 @@
 #include "marcel.h" // cmd
 #include "macros.h" // Stopif, Free
 
-extern size_t arg_index;
+// I hate to use a macro for this but the lack of code duplication is worth it
+#define P_ADD_ITEM(STRUCT, ENTRY)                                                           \
+    do {                                                                                    \
+        if (crawler->STRUCT.num == crawler->STRUCT.cap - 1) {                               \
+            crawler->STRUCT.strs = grow_array(crawler->STRUCT.strs, &crawler->STRUCT.cap);  \
+            Assert_alloc(crawler->STRUCT.strs);                                             \
+        }                                                                                   \
+        crawler->STRUCT.strs[crawler->STRUCT.num++] = ENTRY;                                \
+    } while(0)
+
 extern _Bool first_run;
 extern cmd *first;
 
@@ -26,8 +35,9 @@ int yyerror (cmd *crawler, char const *s);
 %union {
     char *str;
 }
-%token <str> WORD
+%token <str> WORD ASSIGN
 %token NL OUT_T OUT_A IN BKG PIPE 
+%type <str> real_word
 
 %define parse.error verbose
 %parse-param {cmd *crawler}
@@ -87,21 +97,17 @@ pipes:
     ;
 
 cmd:
-   WORD args {crawler->argv.strs[0] = $1;}
+   envs real_word args {crawler->argv.strs[0] = $2;}
    ;
 
-args:
-    args WORD {
-        if (arg_index == crawler->argv.cap - 1) {
-            crawler->argv.strs = grow_array(crawler->argv.strs, &crawler->argv.cap);
-            Assert_alloc(crawler->argv.strs);
-        }
-        crawler->argv.strs[arg_index++] = $2;
+envs:
+    envs ASSIGN {
+        P_ADD_ITEM(env, $2); // See top of file
     }
     | { // This is reached ONLY before the first arg of each pipe 
-        // E.g. the command:  a b | c d | e f
-        //                   ^     ^     ^    <-- reached in those places
-        arg_index = 1;
+        // E.g. the command:  VAR=VAL a b | c d | VAR2=VAL2 e f
+        //                   ^             ^     ^    <-- reached in those places
+        crawler->argv.num = 1;
         if (first_run) { 
             first_run = 0;
             first = crawler;
@@ -116,10 +122,19 @@ args:
     }
     ;
 
+args:
+    args real_word {
+        P_ADD_ITEM(argv, $2); // See top of file
+    }
+    | {}
+    ;
+
+// Make things like `echo VAR=VAL` work as expected
+real_word: WORD {$$ = $1;} | ASSIGN {$$ = $1;}
+
 %%
 
 _Bool first_run = 1;
-size_t arg_index = 1;
 cmd *first = NULL;
 
 #pragma GCC diagnostic push

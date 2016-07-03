@@ -12,9 +12,11 @@ Practice shell implementation
     * Supports quoted strings
 * Background jobs
 * Keeping track of background jobs
+* Setting environment variables per command
 
 ### What isn't:
-* Setting environment variables
+* Set local variables
+* Set environment variables for entire session (e.g. export)
 * Escape sequences
 * stderr redirection
 * Defining aliases/functions

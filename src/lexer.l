@@ -9,6 +9,9 @@
 
 %}
 
+L_WORD [^ \t\n]+
+L_ASSIGN [a-zA-Z_]={L_WORD}
+
 %%
 
 \n { return NL; }
@@ -27,7 +30,14 @@
 
 }
 
-[^ \t\n][^ \t\n]* {
+[a-zA-Z_]+={L_WORD} {
+   yylval.str = strdup(yytext);
+   return ASSIGN;
+
+}
+
+
+{L_WORD} {
     yylval.str = strdup(yytext);
     return WORD;
 }
