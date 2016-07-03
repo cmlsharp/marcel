@@ -1,41 +1,62 @@
-#ifndef STOPIF_H
-#define STOPIF_H
+#ifndef MARCELL_MACROS_H
+#define MARCELL_MACROS_H
 
+#include "marcel.h"
 #include <stdio.h> // fprintf
+#include <errno.h> // errno
 
-// Length of array. _ARR cannot be a pointer
-#define Arr_len(_ARR) (sizeof _ARR / sizeof *_ARR)
+// Length of array. ARR cannot be a pointer
+#define Arr_len(ARR) (sizeof (ARR) / sizeof *(ARR))
+
+// Iterate over an array. Modefied version of one found on stackoverflow
+#define _Foreach(ITEM, LIST)                                                \
+    for(size_t KEEP = 1, COUNT = 0, SIZE = Arr_len((LIST));                  \
+        KEEP && COUNT != SIZE;                                              \
+        KEEP = !KEEP, COUNT++)                                              \
+        for (ITEM = (LIST) + COUNT; KEEP; KEEP = !KEEP)                     \
+
+// Syntatic sugar for Foreach.
+// NAME is the name of the pointer that will point to each member of the list
+// TYPE is the type of values you want to iterate over
+// The rest of the values are items you want to include in the list.
+// Example:
+// Foreach(int, i_ptr, 1, 2, 3) {
+//     printf("%d", *i_ptr); 
+// }
+// 
+// Output:
+// 123
+
+#define Foreach(TYPE, NAME, ...) _Foreach(TYPE *NAME, ((TYPE[]) {__VA_ARGS__})) 
 
 // Make error handling easier
-#define Stopif(_COND, _ACTION, ...)                                         \
+#define Stopif(COND, ACTION, ...)                                           \
     do {                                                                    \
-        if (_COND) {                                                        \
+        if (COND) {                                                         \
             fprintf(stderr, "%s: ", NAME);                                  \
             fprintf(stderr, __VA_ARGS__);                                   \
             fprintf(stderr, "\n");                                          \
-            _ACTION;                                                        \
+            ACTION;                                                         \
         }                                                                   \
     } while (0)
+
+
+#define Assert_alloc(PTR)                                                   \
+    Stopif(!(PTR),                                                          \
+           _Exit(M_FAILED_ALLOC),                                           \
+           "Fatal error encountered. Quitting. System reports %s",          \
+           strerror(errno))
 
 
 // More general version of Free. Allows for custom destructor
 // NOTE: _F(NULL) must be defined behavior for this macro to serve its purpose
-#define Cleanup(_PTR, _F)                                                   \
+#define Cleanup(PTR, F)                                                     \
     do {                                                                    \
-        _F(_PTR);                                                           \
-        _PTR = NULL;                                                        \
+        F(PTR);                                                             \
+        PTR = NULL;                                                         \
     } while (0)
 
 // Stop double frees/use after frees
-#define Free(_PTR) Cleanup (_PTR, free)
-
-// Free multiple pointers at once
-#define Free_all(...)                                                       \
-    do {                                                                    \
-        void *_PTRS[] = {__VA_ARGS__};                                      \
-        for (size_t _I = 0; _I < (Arr_len(_PTRS)); _I++) {  \
-            Free(_PTRS[_I]);                                                \
-        }                                                                   \
-    } while (0)
+#define Free(PTR) Cleanup (PTR, free)
 
 #endif

@@ -1,5 +1,7 @@
 #include <stdlib.h> // malloc, realloc
 #include <string.h> // strcmp
+
+#include "helpers.h" // grow_array
 #include "hash_table.h" // hash_table, node
 #include "macros.h" // Free
 
@@ -39,27 +41,13 @@ void delete_node(char const *k, hash_table *t)
     }
 }
 
-static _Bool grow_table(hash_table *t)
-{
-    if (t->capacity < SIZE_MAX / TABLE_GROWTH_FACTOR) {
-        t->capacity *= TABLE_GROWTH_FACTOR;
-    } else if (t->capacity < SIZE_MAX) {
-        t->capacity = SIZE_MAX;
-    } else {
-        return 0;
-    }
-
-    node **tmp = realloc(t->nodes, t->capacity);
-    if (!tmp) return 0;
-    t->nodes = tmp;
-    return 1;
-
-}
-
 int add_node(char const *k, void *v, hash_table *t)
 {
     if (!t || !t->nodes) return -1;
-    if (t->size + 1 >= t->capacity && !grow_table(t)) return -1;
+    if (t->size + 1 >= t->capacity) { 
+        t->nodes = grow_array(t->nodes, &t->capacity);
+        if (!t->nodes) return -1;
+    }
 
     node *new = malloc(sizeof (node));
     if (!new) return -1;

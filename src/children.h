@@ -1,5 +1,5 @@
-#ifndef MSH_CHILDREN_H
-#define MSH_CHILDREN_H
+#ifndef MARCEL_CHILDREN_H
+#define MARCEL_CHILDREN_H
 
 #include <sys/types.h> // pid_t
 

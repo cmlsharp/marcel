@@ -1,7 +1,7 @@
 #define _GNU_SOURCE // asprintf
 
 #include <stdio.h> // readline
-#include <stdlib.h> // _Exit, calloc, getenv
+#include <stdlib.h> // calloc, getenv
 #include <string.h> // strerror, strcmp
 
 #include <unistd.h> // getcwd
@@ -10,7 +10,7 @@
 #include <readline/history.h> // add_history
 
 #include "marcel.h" // cmd
-#include "execute.h" // run_cmd, initialize_internals, free_cmds
+#include "execute.h" // run_cmd, initialize_internals
 #include "macros.h" // Stopif, Free
 #include "signals.h" // setup_signals
 #include "parser.h" // yyparse
@@ -19,11 +19,12 @@
 #define MAX_PROMPT_LEN 1024
 int volatile exit_code = 0;
 
+cmd *new_cmd(void);
+void free_cmd(cmd *c);
+
 static void gen_prompt(char *buf);
 static char *get_input(void);
 static void add_newline(char **buf);
-cmd *def_cmd(void);
-
 
 int main(void)
 {
@@ -42,11 +43,11 @@ int main(void)
     // SIGINT before first command is executed returns here
     Sigint_init_reentry();
     while ((buf = get_input())) {
-        cmd *volatile crawler = def_cmd();
+        cmd *volatile crawler = new_cmd();
         add_history(buf);
         add_newline((char **) &buf);
         YY_BUFFER_STATE volatile b = yy_scan_string(buf);
-        if ((yyparse(crawler) == 0) && *crawler->argv) {
+        if ((yyparse(crawler) == 0) && *crawler->argv.strs) {
             exit_code = run_cmd(crawler); // Mutate global variable
         }
 
@@ -56,7 +57,7 @@ int main(void)
         // Free and set to NULL to ensure SIGINT in next loop iteration doesn't
         // result in double free
         Cleanup(b, yy_delete_buffer);
-        Cleanup(crawler, free_cmds);
+        Cleanup(crawler, free_cmd);
         Free(buf);
     }
     return exit_code;
@@ -83,13 +84,38 @@ static void gen_prompt(char *buf)
 }
 
 // Create a single cmd that takes input from stdin and outputs to stdout
-cmd *def_cmd(void)
+cmd *new_cmd(void)
 {
-    cmd *ret = calloc(1, sizeof (cmd));
-    Stopif(!ret, _Exit(2), "Memory allocation error. Quiting.");
+    cmd *ret = calloc(1, sizeof *ret);
+    Assert_alloc(ret);
+
+    Foreach(str_array *, x, &ret->argv, &ret->env) {
+        (*x)->strs = calloc(ARGV_INIT_SIZE, sizeof (char*));
+        Assert_alloc((*x)->strs);
+        (*x)->cap = ARGV_INIT_SIZE;
+    }
+
     ret->out = 1;
     ret->wait = 1;
     return ret;
+}
+
+
+// Free list of command objects
+void free_cmd(cmd *c)
+{
+    while (c) {
+        Foreach(str_array *, x, &c->argv, &c->env) {
+            for (size_t i = 0; (*x)->strs[i] && i < (*x)->cap; i++) {
+                Free((*x)->strs[i]);
+            }
+            Free((*x)->strs);
+        }
+
+        cmd *next = c->next;
+        Free(c);
+        c = next;
+    }
 }
 
 
@@ -97,8 +123,7 @@ cmd *def_cmd(void)
 static void add_newline(char **buf)
 {
     char *nbuf;
-    Stopif(asprintf(&nbuf, "%s\n", *buf) == -1, _Exit(2),
-           "Memory allocation error. Quitting");
+    Assert_alloc(asprintf(&nbuf, "%s\n", *buf) != -1);
     Free(*buf);
     *buf = nbuf;
 }

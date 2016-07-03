@@ -6,6 +6,7 @@
 #pragma GCC diagnostic ignored "-Wunused-function"
 #pragma GCC diagnostic ignored "-Wimplicit-function-declaration"
 #pragma GCC diagnostic ignored "-Wint-conversion"
+
 %}
 
 %%
@@ -17,6 +18,7 @@
 "&" { return BKG; }
 \| { return PIPE; }
 [ \t] {}
+
 \"[^\"]*\" {
     yylval.str = strdup(yytext + 1);
     size_t len = strlen(yylval.str);
@@ -24,6 +26,7 @@
     return WORD;
 
 }
+
 [^ \t\n][^ \t\n]* {
     yylval.str = strdup(yytext);
     return WORD;

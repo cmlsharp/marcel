@@ -1,5 +1,5 @@
-#ifndef MSH_HASH_H
-#define MSH_HASH_H
+#ifndef MARCEL_HASH_H
+#define MARCEL_HASH_H
 
 #define TABLE_INIT_SIZE 1024 
 

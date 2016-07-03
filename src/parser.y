@@ -5,12 +5,13 @@
 #include <fcntl.h> // read, write, O_*
 #include <unistd.h> // pipe
 
-#include "marcel.h"
-#include "macros.h" // Stopif, Free
 #include "children.h" // MAX_BKG_PROC
 #include "lexer.h" // yylex (in bison generated code)
+#include "helpers.h" // grow_array
+#include "marcel.h"
+#include "macros.h" // Stopif, Free
 
-extern int arg_index;
+extern size_t arg_index;
 extern _Bool first_run;
 extern cmd *first;
 
@@ -86,13 +87,16 @@ pipes:
     ;
 
 cmd:
-   WORD args {crawler->argv[0] = $1;}
+   WORD args {crawler->argv.strs[0] = $1;}
    ;
 
 args:
     args WORD {
-        Stopif(arg_index == (MAX_ARGS - 1), YYABORT, "Too many arguments. Last argument read: %s", NAME);
-        crawler->argv[arg_index++] = $2;
+        if (arg_index == crawler->argv.cap - 1) {
+            crawler->argv.strs = grow_array(crawler->argv.strs, &crawler->argv.cap);
+            Assert_alloc(crawler->argv.strs);
+        }
+        crawler->argv.strs[arg_index++] = $2;
     }
     | { // This is reached ONLY before the first arg of each pipe 
         // E.g. the command:  a b | c d | e f
@@ -102,7 +106,7 @@ args:
             first_run = 0;
             first = crawler;
         } else {
-            crawler->next = def_cmd();
+            crawler->next = new_cmd();
             int fd[2];
             pipe(fd);
             crawler->out = fd[1];
@@ -115,7 +119,7 @@ args:
 %%
 
 _Bool first_run = 1;
-int arg_index = 1;
+size_t arg_index = 1;
 cmd *first = NULL;
 
 #pragma GCC diagnostic push

@@ -8,6 +8,7 @@
 #include <sys/wait.h> // waitpid, WIF*
 #include <unistd.h> // close, dup
 
+#include "marcel.h" // free_cmd
 #include "hash_table.h" // hash_table, add_node, find_node, free_table
 #include "children.h" // add_bkg_proc, del_bkg_proc
 #include "execute.h" // cmd_func
@@ -57,28 +58,16 @@ void cleanup_internals(void)
     free_table(&t);
 }
 
-// Free list of command objects
-void free_cmds(cmd *crawler)
-{
-    while (crawler) {
-        for (size_t i = 0; crawler->argv[i] && i < MAX_ARGS; i++)
-            Free(crawler->argv[i]);
-        cmd *next = crawler->next;
-        Free(crawler);
-        crawler = next;
-    }
-}
-
 // Takes a cmd object and returns the output of the most recently executed
 // command.
-int run_cmd(cmd *const c)
+int run_cmd(cmd const *c)
 {
-    cmd *crawler = c;
+    cmd const *crawler = c;
     int ret = 0;
     while (crawler) {
         // Check if cmd is builtin
         // Mixing data/function pointers again
-        cmd_func f = find_node(*crawler->argv, t);
+        cmd_func f = find_node(*crawler->argv.strs, t);
         ret = (f) ? f(crawler) : exec_cmd(crawler);
         if (crawler->in != 0)
             close(crawler->in);
@@ -101,7 +90,7 @@ static int exec_cmd(cmd const *c)
     if (p==0) { // Child
         dup2(c->in, STDIN_FILENO);
         dup2(c->out, STDOUT_FILENO);
-        Stopif(execvp(*c->argv, c->argv) == -1, {free_cmds((cmd *) c); exit(-1);},"%s",
+        Stopif(execvp(c->argv.strs[0], c->argv.strs) == -1, exit(M_FAILED_EXEC),"%s",
                strerror(errno));
     } else if (p>0) {
         if (!c->wait) {
@@ -123,7 +112,7 @@ static int exec_cmd(cmd const *c)
 static int m_cd(cmd const *c)
 {
     // cd to homedir if no directory specified
-    char *dir = (c->argv[1]) ? c->argv[1] : getenv("HOME");
+    char *dir = (c->argv.strs[1]) ? c->argv.strs[1] : getenv("HOME");
     Stopif(chdir(dir) == -1, return 1, "%s", strerror(errno));
     return 0;
 }

@@ -1,5 +1,5 @@
-#ifndef MSH_SIG_H
-#define MSH_SIG_H
+#ifndef MARCEL_SIG_H
+#define MARCEL_SIG_H
 
 #include <setjmp.h>
 
