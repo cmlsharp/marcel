@@ -2,7 +2,7 @@
 .SECONDARY:
 
 CC = gcc
-CFLAGS = -Wall -O0 -ggdb3 -Wextra -Werror -pipe -fstack-protector -Wl,-zrelro -Wl,-z,now -Wformat-security -std=c11
+CFLAGS = -Wall -O0 -ggdb3 -Wextra -Werror -pipe -fstack-protector -Wl,-zrelro -Wl,-z,now -Wformat-security -std=gnu11
 EXE = marcel
 LIBS = -lreadline -lfl
 

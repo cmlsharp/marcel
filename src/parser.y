@@ -15,6 +15,9 @@
 #define M_APPEND (O_WRONLY | O_APPEND | O_CREAT)
 #define M_MODE 0644
 
+// First must be set to NULL to ensure next command runs successfully
+#define ABORT_PARSE do { first = NULL; YYABORT; } while (0)
+
 // I hate to use a macro for this but the lack of code duplication is worth it
 #define P_add_item(STRUCT, ENTRY)                                                           \
     do {                                                                                    \
@@ -30,11 +33,10 @@
 // free PATH if modify_io failes) which is why its name is in all caps
 #define MODIFY_IO(PATH, OFLAG, MODE, FD, C)                                                 \
         Stopif(modify_io(PATH, OFLAG, MODE, FD, C) > 0,                                     \
-               Free(PATH); YYABORT,                                                         \
+               Free(PATH); ABORT_PARSE;,                                                    \
                "%s: %s",                                                                    \
                (errno) ? strerror(errno) : "Setting multiple inputs/outputs not supported", PATH)                                             \
 
-extern _Bool first_run;
 extern cmd *first;
 
 int yyerror (cmd *c, char const *s);
@@ -55,7 +57,7 @@ int modify_io(char const *path, int oflag, mode_t m, int fd, cmd *c);
 }
 
 %token <str> WORD ASSIGN 
-%token <str> OUT_T OUT_ERR_T OUT_A OUT_ERR_A ERR_T ERR_A IN 
+%token OUT_T OUT_ERR_T OUT_A OUT_ERR_A ERR_T ERR_A IN 
 %token NL PIPE BKG
 
 %type <str> real_arg
@@ -66,13 +68,13 @@ int modify_io(char const *path, int oflag, mode_t m, int fd, cmd *c);
 %%
 
 cmd_line:
-    pipes io_mods bkg NL {first_run = 1;}
+    pipes io_mods bkg NL {first = NULL;}
     | NL
     ;
 
 bkg:
     BKG {
-        Stopif(num_bkg_child() == MAX_BKG_CHILD, YYABORT, \
+        Stopif(num_bkg_child() == MAX_BKG_CHILD, ABORT_PARSE,
         "Maximum background processes reached. Aborting.");
         crawler->wait = 0;
     }
@@ -85,38 +87,38 @@ io_mods:
     ;
 
 io_mod:
-    IN {
-        MODIFY_IO($1, O_RDONLY, M_MODE, 0, first);
-        Free($1);
+    IN real_arg {
+        MODIFY_IO($2, O_RDONLY, M_MODE, 0, first);
+        Free($2);
     }
-    | OUT_T {
-        MODIFY_IO($1, M_TRUNC, M_MODE, 1, crawler);
-        Free($1);
+    | OUT_T real_arg {
+        MODIFY_IO($2, M_TRUNC, M_MODE, 1, crawler);
+        Free($2);
 
     }
-    | OUT_ERR_T {
+    | OUT_ERR_T real_arg {
         for (int i = 1; i <= 2; i++) {
-            MODIFY_IO($1, M_TRUNC, M_MODE, i,  crawler);
+            MODIFY_IO($2, M_TRUNC, M_MODE, i,  crawler);
         }
-        Free($1);
+        Free($2);
     }
-    | OUT_A {
-        MODIFY_IO($1, M_APPEND, M_MODE, 1, crawler);
-        Free($1);
+    | OUT_A real_arg {
+        MODIFY_IO($2, M_APPEND, M_MODE, 1, crawler);
+        Free($2);
     }
-    | OUT_ERR_A {
+    | OUT_ERR_A real_arg {
         for (int i = 1; i <= 2; i++) {
-            MODIFY_IO($1, M_APPEND, M_MODE, i, crawler);
+            MODIFY_IO($2, M_APPEND, M_MODE, i, crawler);
         }
-        Free($1);
+        Free($2);
     }
-    | ERR_A {
-        MODIFY_IO($1, M_APPEND, M_MODE, 2, crawler);
-        Free($1);
+    | ERR_A real_arg {
+        MODIFY_IO($2, M_APPEND, M_MODE, 2, crawler);
+        Free($2);
     }
-    | ERR_T {
-        MODIFY_IO($1, M_TRUNC, M_MODE, 2, crawler);
-        Free($1);
+    | ERR_T real_arg {
+        MODIFY_IO($2, M_TRUNC, M_MODE, 2, crawler);
+        Free($2);
     }
     ;
 
@@ -136,8 +138,7 @@ envs:
     | { // This is reached ONLY before the first arg of each pipe 
         // E.g. the command:  VAR=VAL a b | c d | VAR2=VAL2 e f
         //                   ^             ^     ^    <-- reached in those places
-        if (first_run) { 
-            first_run = 0;
+        if (!first) { 
             first = crawler;
         } else {
             crawler->next = new_cmd();
@@ -162,14 +163,13 @@ args:
 real_arg: WORD {$$ = $1;} | ASSIGN {$$ = $1;}
 
 %%
-
-_Bool first_run = 1;
 cmd *first = NULL;
 
 
 int yyerror (cmd *c, char const *s)
 {
     (void) c;
+    first = NULL;
     Stopif(1, return 0, "%s", s);
 }
 
