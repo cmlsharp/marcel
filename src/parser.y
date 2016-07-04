@@ -11,8 +11,12 @@
 #include "marcel.h" // cmd
 #include "macros.h" // Stopif, Free
 
+#define M_TRUNC (O_WRONLY | O_TRUNC | O_CREAT)
+#define M_APPEND (O_WRONLY | O_APPEND | O_CREAT)
+#define M_MODE 0644
+
 // I hate to use a macro for this but the lack of code duplication is worth it
-#define P_ADD_ITEM(STRUCT, ENTRY)                                                           \
+#define P_add_item(STRUCT, ENTRY)                                                           \
     do {                                                                                    \
         if (crawler->STRUCT.num == crawler->STRUCT.cap - 1) {                               \
             crawler->STRUCT.strs = grow_array(crawler->STRUCT.strs, &crawler->STRUCT.cap);  \
@@ -21,10 +25,23 @@
         crawler->STRUCT.strs[crawler->STRUCT.num++] = ENTRY;                                \
     } while(0)
 
+// Again, I hate making this a macro but I think reducing the noise makes the 
+// code somewhat clearer. This macro has side effects (will abort parsing and
+// free PATH if modify_io failes) which is why its name is in all caps
+#define MODIFY_IO(PATH, OFLAG, MODE, FD, C)                                                 \
+        Stopif(modify_io(PATH, OFLAG, MODE, FD, C) == 2,                                    \
+               Free(PATH); YYABORT,                                                         \
+               "%s", strerror(errno))                                                       \
+
 extern _Bool first_run;
 extern cmd *first;
 
-int yyerror (cmd *crawler, char const *s);
+int yyerror (cmd *c, char const *s);
+
+// Opens path with the flag and mode specified by oflag and m and adds the file 
+// descriptor to the apropriate field in c
+int modify_io(char const *path, int oflag, mode_t m, int fd, cmd *c);
+
 %}
 
 // Include marcel.h in .c file as well as header
@@ -35,8 +52,10 @@ int yyerror (cmd *crawler, char const *s);
 %union {
     char *str;
 }
+
 %token <str> WORD ASSIGN
-%token NL OUT_T OUT_A IN BKG PIPE 
+%token OUT_T OUT_ERR_T OUT_A OUT_ERR_A ERR_T ERR_A IN 
+%token NL BKG PIPE
 %type <str> real_word
 
 %define parse.error verbose
@@ -65,28 +84,37 @@ io_mods:
 
 io_mod:
     IN WORD {
-        if (crawler->in == 0) {
-            int f = open($2, O_RDONLY);
-            Stopif(f == -1, { Free($2); YYABORT; } , "%s", strerror(errno));
-            first->in = f;
-        }
+        MODIFY_IO($2, O_RDONLY, M_MODE, 0, first);
         Free($2);
     }
     | OUT_T WORD {
-        if (crawler->out == 1) {
-            int f = open($2, O_WRONLY | O_CREAT | O_TRUNC, 0644);
-            Stopif(f == -1, { Free($2); YYABORT; }, "%s",  strerror(errno));
-            crawler->out = f;
-        }
+        MODIFY_IO($2, M_TRUNC, M_MODE, 1, crawler);
         Free($2);
 
     }
-    | OUT_A WORD {
-        if (crawler->out == 1) {
-            int f = open($2, O_WRONLY | O_CREAT | O_APPEND, 0644);
-            Stopif(f == -1, { Free($2); YYABORT; }, "%s", strerror(errno));
-            crawler->out = f;
+    | OUT_ERR_T WORD {
+        for (int i = 1; i <= 2; i++) {
+            MODIFY_IO($2, M_TRUNC, M_MODE, i,  crawler);
         }
+        Free($2);
+    }
+    | OUT_A WORD {
+        MODIFY_IO($2, M_APPEND, M_MODE, 1, crawler);
+        Free($2);
+    }
+    | OUT_ERR_A WORD {
+        puts("YO");
+        for (int i = 1; i <= 2; i++) {
+            MODIFY_IO($2, M_APPEND, M_MODE, i, crawler);
+        }
+        Free($2);
+    }
+    | ERR_A WORD {
+        MODIFY_IO($2, M_APPEND, M_MODE, 2, crawler);
+        Free($2);
+    }
+    | ERR_T WORD {
+        MODIFY_IO($2, M_TRUNC, M_MODE, 2, crawler);
         Free($2);
     }
     ;
@@ -97,17 +125,16 @@ pipes:
     ;
 
 cmd:
-   envs real_word args {crawler->argv.strs[0] = $2;}
+   envs WORD args {crawler->argv.strs[0] = $2;}
    ;
 
 envs:
     envs ASSIGN {
-        P_ADD_ITEM(env, $2); // See top of file
+        P_add_item(env, $2); // See top of file
     }
     | { // This is reached ONLY before the first arg of each pipe 
         // E.g. the command:  VAR=VAL a b | c d | VAR2=VAL2 e f
         //                   ^             ^     ^    <-- reached in those places
-        crawler->argv.num = 1;
         if (first_run) { 
             first_run = 0;
             first = crawler;
@@ -119,12 +146,13 @@ envs:
             crawler->next->in = fd[0];
             crawler = crawler->next;
         }
+        crawler->argv.num = 1;
     }
     ;
 
 args:
     args real_word {
-        P_ADD_ITEM(argv, $2); // See top of file
+        P_add_item(argv, $2); // See top of file
     }
     | {}
     ;
@@ -137,15 +165,29 @@ real_word: WORD {$$ = $1;} | ASSIGN {$$ = $1;}
 _Bool first_run = 1;
 cmd *first = NULL;
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-parameter"
 
-int yyerror (cmd *crawler, char const *s)
+int yyerror (cmd *c, char const *s)
 {
+    (void) c;
     Stopif(1, return 0, "%s", s);
 }
 
-#pragma GCC diagnostic pop
-#pragma GCC diagnostic pop
+int modify_io(char const *path, int oflag, mode_t m, int fd, cmd *c)
+{
+    int *ptr;
+    switch (fd) {
+        case 0: ptr = &c->in; break;
+        case 1: ptr = &c->out; break;
+        case 2: ptr = &c->err; break;
+        default: return 1; break;
+    }
+    if (*ptr == fd) {
+        int f = open(path, oflag, m);
+        if (f == -1) return 2;
+        *ptr = f;
+        return 0;
+    }
+    return 2;
+}
 
 /*yydebug = 1;*/

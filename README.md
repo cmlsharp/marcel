@@ -7,7 +7,7 @@ Practice shell implementation
 * Readline/history support
 * Builtin functions (cd, exit)
 * Dynamic prompt (changes to reflect exit code of previous command and current directory)
-* IO redirection
+* IO redirection (stdin, stdout, stderr)
 * Sane lexing + parsing (via flex and bison)
     * Supports quoted strings
 * Background jobs
@@ -18,7 +18,6 @@ Practice shell implementation
 * Set local variables
 * Set environment variables for entire session (e.g. export)
 * Escape sequences
-* stderr redirection
 * Defining aliases/functions
 * Anything else not mentioned in the above section
 * Unit testing

@@ -96,6 +96,7 @@ cmd *new_cmd(void)
     }
 
     ret->out = 1;
+    ret->err = 2;
     ret->wait = 1;
     return ret;
 }

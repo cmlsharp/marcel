@@ -23,6 +23,7 @@ typedef struct cmd {
     str_array argv; // Arguments to be passed to execvp
     int in; // File descriptor of input
     int out; // File descriptor of output
+    int err; // File descriptor for errors
     _Bool wait; // Wait for child process to finish
     str_array env; // Environment variables in the form "VAR=VALUE"
     struct cmd *next; // Pointer to next piped cmd

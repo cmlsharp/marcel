@@ -69,10 +69,9 @@ int run_cmd(cmd const *c)
         // Mixing data/function pointers again
         cmd_func f = find_node(*crawler->argv.strs, t);
         ret = (f) ? f(crawler) : exec_cmd(crawler);
-        if (crawler->in != 0)
-            close(crawler->in);
-        if (crawler->out != 1)
-            close(crawler->out);
+        if (crawler->in != 0) close(crawler->in);
+        if (crawler->out != 1) close(crawler->out);
+        if (crawler->err != 2) close(crawler->err);
         crawler = crawler->next;
     }
     return ret;
@@ -88,8 +87,9 @@ static int exec_cmd(cmd const *c)
     Stopif(p < 0, return 1, "%s", strerror(errno));
 
     if (p==0) { // Child
-        dup2(c->in, STDIN_FILENO);
-        dup2(c->out, STDOUT_FILENO);
+        dup2(c->in , 0);
+        dup2(c->out, 1);
+        dup2(c->err, 2);
         for (size_t i = 0; i < c->env.num; i++) {
             Stopif(putenv(c->env.strs[i]) == -1, /* No action */, "Could not set the following variable/value pair: %s", c->env.strs[i]);
         }

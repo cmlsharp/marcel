@@ -10,19 +10,23 @@
 %}
 
 L_WORD [^ \t\n]+
-L_ASSIGN [a-zA-Z_]={L_WORD}
 
 %%
 
 \n { return NL; }
 >  { return OUT_T; } 
+&> { return OUT_ERR_T;}
+&>> { return OUT_ERR_A;}
+2> { return ERR_T; }
+2>> { return ERR_A; }
 >> { return OUT_A; }
-"<" { return IN; }
-"&" { return BKG; }
+\< { return IN; }
+& { return BKG; }
 \| { return PIPE; }
 [ \t] {}
 
-\"[^\"]*\" {
+\"[^\"]*\" |
+\'[^\']*\' {
     yylval.str = strdup(yytext + 1);
     size_t len = strlen(yylval.str);
     yylval.str[len-1] = '\0';
