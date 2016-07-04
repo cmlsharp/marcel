@@ -29,9 +29,10 @@
 // code somewhat clearer. This macro has side effects (will abort parsing and
 // free PATH if modify_io failes) which is why its name is in all caps
 #define MODIFY_IO(PATH, OFLAG, MODE, FD, C)                                                 \
-        Stopif(modify_io(PATH, OFLAG, MODE, FD, C) == 2,                                    \
+        Stopif(modify_io(PATH, OFLAG, MODE, FD, C) > 0,                                     \
                Free(PATH); YYABORT,                                                         \
-               "%s", strerror(errno))                                                       \
+               "%s: %s",                                                                    \
+               (errno) ? strerror(errno) : "Setting multiple inputs/outputs not supported", PATH)                                             \
 
 extern _Bool first_run;
 extern cmd *first;
@@ -53,10 +54,11 @@ int modify_io(char const *path, int oflag, mode_t m, int fd, cmd *c);
     char *str;
 }
 
-%token <str> WORD ASSIGN
-%token OUT_T OUT_ERR_T OUT_A OUT_ERR_A ERR_T ERR_A IN 
-%token NL BKG PIPE
-%type <str> real_word
+%token <str> WORD ASSIGN 
+%token <str> OUT_T OUT_ERR_T OUT_A OUT_ERR_A ERR_T ERR_A IN 
+%token NL PIPE BKG
+
+%type <str> real_arg
 
 %define parse.error verbose
 %parse-param {cmd *crawler}
@@ -83,39 +85,38 @@ io_mods:
     ;
 
 io_mod:
-    IN WORD {
-        MODIFY_IO($2, O_RDONLY, M_MODE, 0, first);
-        Free($2);
+    IN {
+        MODIFY_IO($1, O_RDONLY, M_MODE, 0, first);
+        Free($1);
     }
-    | OUT_T WORD {
-        MODIFY_IO($2, M_TRUNC, M_MODE, 1, crawler);
-        Free($2);
+    | OUT_T {
+        MODIFY_IO($1, M_TRUNC, M_MODE, 1, crawler);
+        Free($1);
 
     }
-    | OUT_ERR_T WORD {
+    | OUT_ERR_T {
         for (int i = 1; i <= 2; i++) {
-            MODIFY_IO($2, M_TRUNC, M_MODE, i,  crawler);
+            MODIFY_IO($1, M_TRUNC, M_MODE, i,  crawler);
         }
-        Free($2);
+        Free($1);
     }
-    | OUT_A WORD {
-        MODIFY_IO($2, M_APPEND, M_MODE, 1, crawler);
-        Free($2);
+    | OUT_A {
+        MODIFY_IO($1, M_APPEND, M_MODE, 1, crawler);
+        Free($1);
     }
-    | OUT_ERR_A WORD {
-        puts("YO");
+    | OUT_ERR_A {
         for (int i = 1; i <= 2; i++) {
-            MODIFY_IO($2, M_APPEND, M_MODE, i, crawler);
+            MODIFY_IO($1, M_APPEND, M_MODE, i, crawler);
         }
-        Free($2);
+        Free($1);
     }
-    | ERR_A WORD {
-        MODIFY_IO($2, M_APPEND, M_MODE, 2, crawler);
-        Free($2);
+    | ERR_A {
+        MODIFY_IO($1, M_APPEND, M_MODE, 2, crawler);
+        Free($1);
     }
-    | ERR_T WORD {
-        MODIFY_IO($2, M_TRUNC, M_MODE, 2, crawler);
-        Free($2);
+    | ERR_T {
+        MODIFY_IO($1, M_TRUNC, M_MODE, 2, crawler);
+        Free($1);
     }
     ;
 
@@ -151,14 +152,14 @@ envs:
     ;
 
 args:
-    args real_word {
+    args real_arg {
         P_add_item(argv, $2); // See top of file
     }
     | {}
     ;
 
 // Make things like `echo VAR=VAL` work as expected
-real_word: WORD {$$ = $1;} | ASSIGN {$$ = $1;}
+real_arg: WORD {$$ = $1;} | ASSIGN {$$ = $1;}
 
 %%
 
@@ -179,15 +180,15 @@ int modify_io(char const *path, int oflag, mode_t m, int fd, cmd *c)
         case 0: ptr = &c->in; break;
         case 1: ptr = &c->out; break;
         case 2: ptr = &c->err; break;
-        default: return 1; break;
+        default: return -1; break; // Function used incorrectly
     }
     if (*ptr == fd) {
         int f = open(path, oflag, m);
-        if (f == -1) return 2;
+        if (f == -1) return 1;
         *ptr = f;
         return 0;
     }
-    return 2;
+    return 1;
 }
 
 /*yydebug = 1;*/

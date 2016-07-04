@@ -1,35 +1,69 @@
 %{
 #include <string.h> // strdup
+#include <ctype.h>
 #include "parser.h" // NL, OUT_T, OUT_A...
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-function"
 #pragma GCC diagnostic ignored "-Wimplicit-function-declaration"
 #pragma GCC diagnostic ignored "-Wint-conversion"
-
+char *skip_spaces(char *str, int inc);
 %}
 
 L_WORD [^ \t\n]+
+SPACE [ \t]
+S_WORD {SPACE}*{L_WORD}
+BKG_WORD {L_WORD}{SPACE}*\&
 
 %%
 
+
 \n { return NL; }
->  { return OUT_T; } 
-&> { return OUT_ERR_T;}
-&>> { return OUT_ERR_A;}
-2> { return ERR_T; }
-2>> { return ERR_A; }
->> { return OUT_A; }
-\< { return IN; }
-& { return BKG; }
+>{S_WORD} { 
+    yylval.str = strdup(skip_spaces(yytext+1, 1));
+    return OUT_T; 
+} 
+
+&>{S_WORD} { 
+    yylval.str = strdup(skip_spaces(yytext+2, 1));
+    return OUT_ERR_T;
+}
+
+&>>{S_WORD} { 
+    yylval.str = strdup(skip_spaces(yytext+3, 1));
+    return OUT_ERR_A;
+}
+
+2>{S_WORD} { 
+    yylval.str = strdup(skip_spaces(yytext+2, 1));
+    return ERR_T; 
+}
+
+2>>{S_WORD} { 
+    yylval.str = strdup(skip_spaces(yytext+3, 1));
+    return ERR_A; 
+}
+>>{S_WORD} { 
+    yylval.str = strdup(skip_spaces(yytext+2, 1));
+    return OUT_A; 
+}
+
+\<{S_WORD} { 
+    yylval.str = strdup(skip_spaces(yytext+1, 1));
+    return IN; 
+}
+
+\& {return BKG;}
+
 \| { return PIPE; }
-[ \t] {}
+
+{SPACE} {}
+
 
 \"[^\"]*\" |
 \'[^\']*\' {
     yylval.str = strdup(yytext + 1);
-    size_t len = strlen(yylval.str);
-    yylval.str[len-1] = '\0';
+    yylval.str[yyleng-2] = '\0';
     return WORD;
 
 }
@@ -40,7 +74,6 @@ L_WORD [^ \t\n]+
 
 }
 
-
 {L_WORD} {
     yylval.str = strdup(yytext);
     return WORD;
@@ -48,5 +81,11 @@ L_WORD [^ \t\n]+
 
 %%
 
+char *skip_spaces(char *str, int inc)
+{
+    while(isspace(*str)) {str+=inc;}
+    str-=inc; 
+    return str;
+}
 #pragma GCC diagnostic pop
 #pragma GCC diagnostic pop
