@@ -130,14 +130,11 @@ static int m_cd(cmd const *c)
     return 0;
 }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-parameter"
 static int m_exit(cmd const *c)
 {
+    (void) c;
     exit(exit_code);
 }
-#pragma GCC diagnostic pop
-#pragma GCC diagnostic pop
 
 static int m_help(cmd const *c)
 {
