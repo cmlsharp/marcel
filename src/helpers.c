@@ -7,8 +7,11 @@
 #define SIZE_MAX ((size_t) -1)
 #endif
 
-void *grow_array(void *arr, size_t *cap) {
-    if (!arr || !cap || !*cap) return NULL;
+void *grow_array(void *arr, size_t *cap)
+{
+    if (!arr || !cap || !*cap) {
+        return NULL;
+    }
     size_t new_cap = *cap;
     if (new_cap < SIZE_MAX / 2) {
         new_cap *= 2;

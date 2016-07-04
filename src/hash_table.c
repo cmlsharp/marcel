@@ -14,9 +14,13 @@ static unsigned long get_index(char const *key, size_t size);
 
 hash_table *new_table(size_t size)
 {
-    if (size == 0) return NULL;
+    if (size == 0) {
+        return NULL;
+    }
     hash_table *ret = malloc(sizeof *ret);
-    if (!ret) return NULL;
+    if (!ret) {
+        return NULL;
+    }
     ret->nodes = calloc(size, sizeof (node*));
     if (!ret->nodes) {
         free(ret);
@@ -33,7 +37,9 @@ void delete_node(char const *k, hash_table *t)
     node *prev = NULL;
     while (crawler) {
         if (strcmp(k, crawler->key) == 0) {
-            if (prev) prev->next = crawler->next;
+            if (prev) {
+                prev->next = crawler->next;
+            }
             Free(crawler);
             t->size--;
             return;
@@ -43,14 +49,20 @@ void delete_node(char const *k, hash_table *t)
 
 int add_node(char const *k, void *v, hash_table *t)
 {
-    if (!t || !t->nodes) return -1;
-    if (t->size + 1 >= t->capacity) { 
+    if (!t || !t->nodes) {
+        return -1;
+    }
+    if (t->size + 1 >= t->capacity) {
         t->nodes = grow_array(t->nodes, &t->capacity);
-        if (!t->nodes) return -1;
+        if (!t->nodes) {
+            return -1;
+        }
     }
 
     node *new = malloc(sizeof (node));
-    if (!new) return -1;
+    if (!new) {
+        return -1;
+    }
 
     new->key = k;
     new->value = v;
@@ -64,12 +76,14 @@ int add_node(char const *k, void *v, hash_table *t)
 
 void *find_node(char const *k, hash_table const *t)
 {
-    if (!t || !t->nodes)
+    if (!t || !t->nodes) {
         return NULL;
+    }
     node *crawler = t->nodes[get_index(k, t->capacity)];
     while (crawler) {
-        if (strcmp(crawler->key, k) == 0)
+        if (strcmp(crawler->key, k) == 0) {
             return crawler->value;
+        }
         crawler = crawler->next;
     }
     return NULL;
@@ -77,8 +91,9 @@ void *find_node(char const *k, hash_table const *t)
 
 void free_table(hash_table **t)
 {
-    if (!t)
+    if (!t) {
         return;
+    }
     for (size_t i = 0; i < (*t)->capacity; i++) {
         node *crawler = (*t)->nodes[i];
         while (crawler) {
@@ -97,7 +112,8 @@ static unsigned long get_index(char const *key, size_t size)
 {
     unsigned long hash = 5381;
     int c;
-    while ((c = *key++))
+    while ((c = *key++)) {
         hash = ((hash << 5) + hash) + c;
+    }
     return hash & (size - 1);
 }

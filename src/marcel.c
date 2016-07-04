@@ -36,7 +36,7 @@ int main(void)
     Stopif(initialize_internals() != 0, return 1, "Could not initialize internals");
 
     // buf, b and crawler must be volatile becasue they are read from/written
-    // to between Sigint_reentry (which calls sigsetbuf) and when siglongjmp 
+    // to between Sigint_reentry (which calls sigsetbuf) and when siglongjmp
     // could be called in the SIGINT handler. Suboptimal but seemingly
     // necessary.
     char *volatile buf = NULL;
@@ -53,7 +53,7 @@ int main(void)
 
         // Cleanup
         Sigint_reentry();
-        
+
         // Free and set to NULL to ensure SIGINT in next loop iteration doesn't
         // result in double free
         Cleanup(b, yy_delete_buffer);
@@ -79,7 +79,8 @@ static void gen_prompt(char *buf)
     char *user = getenv("USER");
     char *dir = getcwd(NULL, 1024);
     char sym = (strcmp(user, "root")) ? '$' : '#';
-    snprintf(buf, MAX_PROMPT_LEN, "%-3d [%s:%s] %c ", (unsigned char) exit_code, user, dir, sym);
+    snprintf(buf, MAX_PROMPT_LEN, "%-3d [%s:%s] %c ", (unsigned char) exit_code,
+             user, dir, sym);
     Free(dir);
 }
 

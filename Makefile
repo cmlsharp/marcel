@@ -44,6 +44,6 @@ $(OBJDIR)/%.o: $(SRCDIR)/%.c $(HDRS)
 -include $(wildcard $(OBJDIR)/*.d)
 
 clean:
-	rm -f core $(EXE)
+	rm -f core $(EXE) $(basename $(FLEX)).{h,c} $(basename $(BSON)).{h,c}
 	rm -r $(OBJDIR)
 

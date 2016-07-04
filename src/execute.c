@@ -44,11 +44,14 @@ int initialize_internals(void)
     // NOTE: We are mixing data pointers and function pointers here. ISO C
     // forbids this but it's fine in POSIX
     for (size_t i = 0; i < Arr_len(builtin_names); i++) {
-        if (add_node(builtin_names[i], builtin_funcs[i], t) != 0)
+        if (add_node(builtin_names[i], builtin_funcs[i], t) != 0) {
             return -1;
+        }
     }
 
-    if (atexit(cleanup_internals) != 0) return -1;
+    if (atexit(cleanup_internals) != 0) {
+        return -1;
+    }
     return 0;
 }
 
@@ -69,9 +72,15 @@ int run_cmd(cmd const *c)
         // Mixing data/function pointers again
         cmd_func f = find_node(*crawler->argv.strs, t);
         ret = (f) ? f(crawler) : exec_cmd(crawler);
-        if (crawler->in != 0) close(crawler->in);
-        if (crawler->out != 1) close(crawler->out);
-        if (crawler->err != 2) close(crawler->err);
+        if (crawler->in != 0) {
+            close(crawler->in);
+        }
+        if (crawler->out != 1) {
+            close(crawler->out);
+        }
+        if (crawler->err != 2) {
+            close(crawler->err);
+        }
         crawler = crawler->next;
     }
     return ret;
@@ -91,10 +100,11 @@ static int exec_cmd(cmd const *c)
         dup2(c->out, 1);
         dup2(c->err, 2);
         for (size_t i = 0; i < c->env.num; i++) {
-            Stopif(putenv(c->env.strs[i]) == -1, /* No action */, "Could not set the following variable/value pair: %s", c->env.strs[i]);
+            Stopif(putenv(c->env.strs[i]) == -1, /* No action */,
+                   "Could not set the following variable/value pair: %s", c->env.strs[i]);
         }
-        Stopif(execvp(c->argv.strs[0], c->argv.strs) == -1, exit(M_FAILED_EXEC),"%s",
-               strerror(errno));
+        Stopif(execvp(*c->argv.strs, c->argv.strs) == -1, exit(M_FAILED_EXEC),"%s: %s",
+               strerror(errno), *c->argv.strs);
     } else if (p>0) {
         if (!c->wait) {
             size_t job_num = add_bkg_child(p);
@@ -133,14 +143,14 @@ static int m_help(cmd const *c)
 {
     char *help_msg = "Marcel the Shell (with shoes on) v. " VERSION "\n"
                      "Written by Chad Sharp\n"
-                      "\n" 
-                      "Features:\n"
-                      "* IO redirection (via < > and >>)\n"
-                      "* Pipes\n"
-                      "* Command history\n"
-                      "* Background jobs (via &)\n"
-                      "\n"
-                      "This shell only fights when provoked.";
-    dprintf(c->out, "%s\n", help_msg); 
+                     "\n"
+                     "Features:\n"
+                     "* IO redirection (via < > and >>)\n"
+                     "* Pipes\n"
+                     "* Command history\n"
+                     "* Background jobs (via &)\n"
+                     "\n"
+                     "This shell only fights when provoked.";
+    dprintf(c->out, "%s\n", help_msg);
     return 0;
 }

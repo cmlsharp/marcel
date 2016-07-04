@@ -14,7 +14,9 @@ size_t add_bkg_child(pid_t p)
 {
     size_t i;
     for (i = 0; c_rec.bkg[i]; i++) {
-        if (i == MAX_BKG_CHILD - 1) return 0;
+        if (i == MAX_BKG_CHILD - 1) {
+            return 0;
+        }
     }
     c_rec.bkg[i] = p;
     c_rec.count++;
