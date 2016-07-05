@@ -88,36 +88,34 @@ io_mods:
 
 io_mod:
     IN real_arg {
-        MODIFY_IO($2, O_RDONLY, M_MODE, 0, first);
+        MODIFY_IO($2, O_RDONLY, M_MODE, STDIN_FILENO, first);
         Free($2);
     }
     | OUT_T real_arg {
-        MODIFY_IO($2, M_TRUNC, M_MODE, 1, crawler);
+        MODIFY_IO($2, M_TRUNC, M_MODE, STDOUT_FILENO, crawler);
         Free($2);
 
     }
     | OUT_ERR_T real_arg {
-        for (int i = 1; i <= 2; i++) {
-            MODIFY_IO($2, M_TRUNC, M_MODE, i,  crawler);
-        }
+        MODIFY_IO($2, M_TRUNC, M_MODE, STDOUT_FILENO,  crawler);
+        MODIFY_IO($2, M_TRUNC, M_MODE, STDERR_FILENO,  crawler);
         Free($2);
     }
     | OUT_A real_arg {
-        MODIFY_IO($2, M_APPEND, M_MODE, 1, crawler);
+        MODIFY_IO($2, M_APPEND, M_MODE, STDOUT_FILENO, crawler);
         Free($2);
     }
     | OUT_ERR_A real_arg {
-        for (int i = 1; i <= 2; i++) {
-            MODIFY_IO($2, M_APPEND, M_MODE, i, crawler);
-        }
+        MODIFY_IO($2, M_APPEND, M_MODE, STDOUT_FILENO, crawler);
+        MODIFY_IO($2, M_APPEND, M_MODE, STDERR_FILENO, crawler);
         Free($2);
     }
     | ERR_A real_arg {
-        MODIFY_IO($2, M_APPEND, M_MODE, 2, crawler);
+        MODIFY_IO($2, M_APPEND, M_MODE, STDERR_FILENO, crawler);
         Free($2);
     }
     | ERR_T real_arg {
-        MODIFY_IO($2, M_TRUNC, M_MODE, 2, crawler);
+        MODIFY_IO($2, M_TRUNC, M_MODE, STDERR_FILENO, crawler);
         Free($2);
     }
     ;
