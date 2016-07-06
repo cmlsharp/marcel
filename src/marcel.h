@@ -10,19 +10,19 @@
 // function for SIGINT
 extern int volatile exit_code;
 
-// Dynamically allocated array of strings
-typedef struct str_array {
-    char **strs;
-    size_t cap; // Size of dynamically allocated array
-    size_t num; // Number of ocupied slots
-} str_array;
+// Dynamically allocated array that keeps track of its size
+typedef struct dyn_array {
+    void *data;
+    size_t cap; // Allocated size
+    size_t num; // Number of used indicies
+} dyn_array;
 
 // Struct to model a single command
 typedef struct cmd {
-    str_array argv; // Arguments to be passed to execvp
+    dyn_array argv; // Arguments to be passed to execvp
+    dyn_array env; // Environment variables in the form "VAR=VALUE"
     int fds[3]; // File descriptors for input, output, error
     _Bool wait; // Wait for child process to finish
-    str_array env; // Environment variables in the form "VAR=VALUE"
     struct cmd *next; // Pointer to next piped cmd
 } cmd;
 

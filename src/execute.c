@@ -96,7 +96,8 @@ int run_cmd(cmd_wrapper const *w)
             crawler->fds[1] = io_fd[1];
             crawler->fds[2] = io_fd[2];
         }
-        cmd_func f = find_node(*crawler->argv.strs, t);
+        char **argv = crawler->argv.data;
+        cmd_func f = find_node(argv[0], t);
         ret = (f) ? f(crawler) : exec_cmd(crawler);
         fd_cleanup(crawler->fds, Arr_len(io_fd));
         crawler = crawler->next;
@@ -112,19 +113,21 @@ static int exec_cmd(cmd const *c)
     pid_t p = fork();
 
     Stopif(p < 0, return 1, "%s", strerror(errno));
+    char **argv = c->argv.data;
+    char **env  = c->env.data;
 
     if (p==0) { // Child
         for (size_t i = 0; i < c->env.num; i++) {
-            Stopif(putenv(c->env.strs[i]) == -1, /* No action */,
-                   "Could not set the following variable/value pair: %s", c->env.strs[i]);
+            Stopif(putenv(env[i]) == -1, /* No action */,
+                   "Could not set the following variable/value pair: %s", env[i]);
         }
 
         for (size_t i = 0;  i < Arr_len(c->fds); i++){
             dup2(c->fds[i], i);
         }
 
-        Stopif(execvp(*c->argv.strs, c->argv.strs) == -1, exit(M_FAILED_EXEC),"%s: %s",
-               strerror(errno), *c->argv.strs);
+        Stopif(execvp(*argv, argv) == -1, exit(M_FAILED_EXEC),"%s: %s",
+               strerror(errno), *argv);
     } else if (p>0) {
         if (!c->wait) {
             size_t job_num = add_bkg_child(p);
@@ -144,8 +147,10 @@ static int exec_cmd(cmd const *c)
 
 static int m_cd(cmd const *c)
 {
+    // Avoid casting from void* at every use
+    char **argv = c->argv.data;
     // cd to homedir if no directory specified
-    char *dir = (c->argv.strs[1]) ? c->argv.strs[1] : getenv("HOME");
+    char *dir = (argv[1]) ? argv[1] : getenv("HOME");
     Stopif(chdir(dir) == -1, return 1, "%s", strerror(errno));
     return 0;
 }

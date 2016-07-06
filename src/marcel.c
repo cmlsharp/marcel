@@ -99,10 +99,11 @@ cmd *new_cmd(void)
     cmd *ret = calloc(1, sizeof *ret);
     Assert_alloc(ret);
 
-    Foreach(str_array *, x, &ret->argv, &ret->env) {
-        (*x)->strs = calloc(ARGV_INIT_SIZE, sizeof (char*));
-        Assert_alloc((*x)->strs);
-        (*x)->cap = ARGV_INIT_SIZE;
+    dyn_array *a[] = {&ret->argv, &ret->env};
+    for (size_t i = 0; i < Arr_len(a); i++) {
+        a[i]->data = calloc(ARGV_INIT_SIZE, sizeof (char *));
+        Assert_alloc(a[i]->data);
+        a[i]->cap = ARGV_INIT_SIZE;
     }
 
     for (size_t i = 0; i < Arr_len(ret->fds); i++) {
@@ -117,11 +118,13 @@ cmd *new_cmd(void)
 void free_cmd(cmd *c)
 {
     while (c) {
-        Foreach(str_array *, x, &c->argv, &c->env) {
-            for (size_t i = 0; (*x)->strs[i] && i < (*x)->cap; i++) {
-                Free((*x)->strs[i]);
+        dyn_array *a[] = {&c->argv, &c->env};
+        for (size_t i = 0 ; i < Arr_len(a); i++) {
+            char ***strs = (char ***) &a[i]->data;
+            for (size_t j = 0; (*strs)[j] && i < a[j]->cap; j++) {
+                Free((*strs)[j]);
             }
-            Free((*x)->strs);
+            Free(*strs);
         }
 
         cmd *next = c->next;

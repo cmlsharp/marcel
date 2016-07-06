@@ -21,10 +21,10 @@
 #define P_add_item(STRUCT, ENTRY)                                                               \
     do {                                                                                        \
         if (p_crawler->STRUCT.num == p_crawler->STRUCT.cap - 1) {                               \
-            p_crawler->STRUCT.strs = grow_array(p_crawler->STRUCT.strs, &p_crawler->STRUCT.cap);\
-            Assert_alloc(p_crawler->STRUCT.strs);                                               \
+            p_crawler->STRUCT.data = grow_array(p_crawler->STRUCT.data, &p_crawler->STRUCT.cap);\
+            Assert_alloc(p_crawler->STRUCT.data);                                               \
         }                                                                                       \
-        p_crawler->STRUCT.strs[p_crawler->STRUCT.num++] = ENTRY;                                \
+        ((char **) p_crawler->STRUCT.data)[p_crawler->STRUCT.num++] = ENTRY;                    \
     } while(0)
 
 // See above
@@ -120,7 +120,7 @@ pipes:
     ;
 
 cmd:
-   envs WORD args {p_crawler->argv.strs[0] = $2;}
+   envs WORD args {((char **) p_crawler->argv.data)[0] = $2;}
    ;
 
 envs:

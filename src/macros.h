@@ -8,27 +8,6 @@
 // Length of array. ARR cannot be a pointer
 #define Arr_len(ARR) (sizeof (ARR) / sizeof *(ARR))
 
-// Iterate over an array. Modefied version of one found on stackoverflow
-#define I_Foreach(ITEM, LIST)                                               \
-    for(size_t KEEP = 1, COUNT = 0, SIZE = Arr_len((LIST));                 \
-        KEEP && COUNT != SIZE;                                              \
-        KEEP = !KEEP, COUNT++)                                              \
-        for (ITEM = (LIST) + COUNT; KEEP; KEEP = !KEEP)                     \
-
-// Syntatic sugar for Foreach.
-// NAME is the name of the pointer that will point to each member of the list
-// TYPE is the type of values you want to iterate over
-// The rest of the values are items you want to include in the list.
-// Example:
-// Foreach(int, i_ptr, 1, 2, 3) {
-//     printf("%d", *i_ptr); 
-// }
-// 
-// Output:
-// 123
-
-#define Foreach(TYPE, NAME, ...) I_Foreach(TYPE *NAME, ((TYPE[]) {__VA_ARGS__})) 
-
 // Standard way to print error messages across program
 #define Err_msg(...)                                                    \
     do {                                                                \
@@ -37,6 +16,9 @@
         fprintf(stderr, "\n");                                          \
     } while (0)
         
+
+// Make casting look a little prettier
+#define Cast(TYPE, VAL) ((TYPE) VAL)
 
 // Make error handling easier
 #define Stopif(COND, ACTION, ...)                                           \
