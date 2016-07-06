@@ -9,7 +9,7 @@
 #include <readline/readline.h> // readline, rl_complete
 #include <readline/history.h> // add_history
 
-#include "marcel.h" // cmd
+#include "ds/cmd.h" // cmd, cmd_wrapper etc.
 #include "execute.h" // run_cmd, initialize_internals
 #include "macros.h" // Stopif, Free
 #include "signals.h" // setup_signals
@@ -19,11 +19,6 @@
 #define MAX_PROMPT_LEN 1024
 int volatile exit_code = 0;
 
-cmd *new_cmd(void);
-void free_cmd(cmd *c);
-
-static cmd_wrapper *new_cmd_wrapper(void);
-static void free_cmd_wrapper(cmd_wrapper *w);
 static void gen_prompt(char *buf);
 static char *get_input(void);
 static void add_newline(char **buf);
@@ -86,64 +81,6 @@ static void gen_prompt(char *buf)
     Free(dir);
 }
 
-static cmd_wrapper *new_cmd_wrapper(void)
-{
-    cmd_wrapper *ret = calloc(1, sizeof *ret);
-    Assert_alloc(ret);
-    return ret;
-}
-
-// Create a single cmd that takes input from stdin and outputs to stdout
-cmd *new_cmd(void)
-{
-    cmd *ret = calloc(1, sizeof *ret);
-    Assert_alloc(ret);
-
-    dyn_array *a[] = {&ret->argv, &ret->env};
-    for (size_t i = 0; i < Arr_len(a); i++) {
-        a[i]->data = calloc(ARGV_INIT_SIZE, sizeof (char *));
-        Assert_alloc(a[i]->data);
-        a[i]->cap = ARGV_INIT_SIZE;
-    }
-
-    for (size_t i = 0; i < Arr_len(ret->fds); i++) {
-        ret->fds[i] = i;
-    }
-
-    ret->wait = 1;
-    return ret;
-}
-
-// Free list of command objects
-void free_cmd(cmd *c)
-{
-    while (c) {
-        dyn_array *a[] = {&c->argv, &c->env};
-        for (size_t i = 0 ; i < Arr_len(a); i++) {
-            char ***strs = (char ***) &a[i]->data;
-            for (size_t j = 0; (*strs)[j] && i < a[j]->cap; j++) {
-                Free((*strs)[j]);
-            }
-            Free(*strs);
-        }
-
-        cmd *next = c->next;
-        Free(c);
-        c = next;
-    }
-}
-
-static void free_cmd_wrapper(cmd_wrapper *w)
-{
-    if (!w) return;
-    for (size_t i = 0; i < Arr_len(w->io); i++) {
-        Free(w->io[i].path);
-    }
-    free_cmd(w->root);
-    Free(w);
-}
-
-
 // Grammar expects newline and readline doesn't supply it
 static void add_newline(char **buf)
 {
@@ -152,4 +89,5 @@ static void add_newline(char **buf)
     Free(*buf);
     *buf = nbuf;
 }
+
 

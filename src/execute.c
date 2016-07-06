@@ -9,9 +9,9 @@
 #include <sys/wait.h> // waitpid, WIF*
 #include <unistd.h> // close, dup
 
-#include "marcel.h" // free_cmd
-#include "hash_table.h" // hash_table, add_node, find_node, free_table
 #include "children.h" // add_bkg_child, del_bkg_proc
+#include "ds/cmd.h" // cmd, cmd_wrapper
+#include "ds/hash_table.h" // hash_table, add_node, find_node, free_table
 #include "execute.h" // cmd_func
 #include "macros.h" // Stopif, Free, Arr_len
 
@@ -96,7 +96,7 @@ int run_cmd(cmd_wrapper const *w)
             crawler->fds[1] = io_fd[1];
             crawler->fds[2] = io_fd[2];
         }
-        char **argv = crawler->argv.data;
+        char **argv = crawler->argv->data;
         cmd_func f = find_node(argv[0], t);
         ret = (f) ? f(crawler) : exec_cmd(crawler);
         fd_cleanup(crawler->fds, Arr_len(io_fd));
@@ -113,11 +113,11 @@ static int exec_cmd(cmd const *c)
     pid_t p = fork();
 
     Stopif(p < 0, return 1, "%s", strerror(errno));
-    char **argv = c->argv.data;
-    char **env  = c->env.data;
+    char **argv = c->argv->data;
+    char **env  = c->env->data;
 
     if (p==0) { // Child
-        for (size_t i = 0; i < c->env.num; i++) {
+        for (size_t i = 0; i < c->env->num; i++) {
             Stopif(putenv(env[i]) == -1, /* No action */,
                    "Could not set the following variable/value pair: %s", env[i]);
         }
@@ -148,7 +148,7 @@ static int exec_cmd(cmd const *c)
 static int m_cd(cmd const *c)
 {
     // Avoid casting from void* at every use
-    char **argv = c->argv.data;
+    char **argv = c->argv->data;
     // cd to homedir if no directory specified
     char *dir = (argv[1]) ? argv[1] : getenv("HOME");
     Stopif(chdir(dir) == -1, return 1, "%s", strerror(errno));

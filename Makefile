@@ -10,15 +10,18 @@ SRCDIR = src
 OBJDIR = obj
 $(shell `mkdir -p $(OBJDIR)`)
 
-CSRCS = $(wildcard $(SRCDIR)/*.c) 
+CSRCS = $(wildcard $(SRCDIR)/*.c) $(wildcard $(SRCDIR)/ds/*.c)
 BSON = $(patsubst %.y, %.c, $(wildcard $(SRCDIR)/*.y))
 FLEX = $(patsubst %.l, %.c, $(wildcard $(SRCDIR)/*.l))
-
 
 SRCS =  $(BSON) $(FLEX) $(CSRCS)
 
 HDRS = $(SRCS:.c=.h)
 OBJS = $(addprefix obj/,$(notdir $(SRCS:.c=.o)))
+
+define cc-command
+$(CC) $(CFLAGS) -MMD -c -o $@ $<
+endef
 
 
 all: $(EXE)
@@ -38,8 +41,10 @@ $(EXE): $(OBJS)
 
 
 $(OBJDIR)/%.o: $(SRCDIR)/%.c $(HDRS) 
-	$(CC) $(CFLAGS) -MMD -c -o $@ $<
+	$(cc-command)
 
+$(OBJDIR)/%.o: $(SRCDIR)/ds/%.c $(HDRS)
+	$(cc-command)
 
 -include $(wildcard $(OBJDIR)/*.d)
 

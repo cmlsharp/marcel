@@ -6,9 +6,9 @@
 #include <unistd.h> // pipe
 
 #include "children.h" // MAX_BKG_CHILD, num_bkg_child
+#include "ds/cmd.h" // cmd, cmd_wrapper
 #include "lexer.h" // yylex (in bison generated code)
 #include "helpers.h" // grow_array
-#include "marcel.h" // cmd
 #include "macros.h" // Stopif, Free
 
 #define P_TRUNCATE (O_WRONLY | O_TRUNC | O_CREAT)
@@ -18,25 +18,25 @@
 #define ABORT_PARSE do { p_crawler = NULL; YYABORT; } while (0)
 
 // I hate to use a macro for this but the lack of code duplication is worth it
-#define P_add_item(STRUCT, ENTRY)                                                               \
-    do {                                                                                        \
-        if (p_crawler->STRUCT.num == p_crawler->STRUCT.cap - 1) {                               \
-            p_crawler->STRUCT.data = grow_array(p_crawler->STRUCT.data, &p_crawler->STRUCT.cap);\
-            Assert_alloc(p_crawler->STRUCT.data);                                               \
-        }                                                                                       \
-        ((char **) p_crawler->STRUCT.data)[p_crawler->STRUCT.num++] = ENTRY;                    \
+#define P_add_item(STRUCT, ENTRY)                                                                   \
+    do {                                                                                            \
+        if (p_crawler->STRUCT->num == p_crawler->STRUCT->cap - 1) {                                 \
+            p_crawler->STRUCT->data = grow_array(p_crawler->STRUCT->data, &p_crawler->STRUCT->cap); \
+            Assert_alloc(p_crawler->STRUCT->data);                                                  \
+        }                                                                                           \
+        ((char **) p_crawler->STRUCT->data)[p_crawler->STRUCT->num++] = ENTRY;                      \
     } while(0)
 
 // See above
-#define Add_io_mod(PATH, FD, OFLAG)                                                             \
-    do {                                                                                        \
-        if (!wrap->io[FD].path) {                                                               \
-            wrap->io[FD] = (cmd_io) {.path = PATH, .oflag = OFLAG};                             \
-        } else {                                                                                \
-            Err_msg("Taking/sending IO to/from more than one source not supported. "            \
-                    "Skipping \"%s\"", PATH);                                                   \
-            Free(PATH);                                                                         \
-        }                                                                                       \
+#define Add_io_mod(PATH, FD, OFLAG)                                                                 \
+    do {                                                                                            \
+        if (!wrap->io[FD].path) {                                                                   \
+            wrap->io[FD] = (cmd_io) {.path = PATH, .oflag = OFLAG};                                 \
+        } else {                                                                                    \
+            Err_msg("Taking/sending IO to/from more than one source not supported. "                \
+                    "Skipping \"%s\"", PATH);                                                       \
+            Free(PATH);                                                                             \
+        }                                                                                           \
     } while (0)
 extern cmd *p_crawler;
 
@@ -50,7 +50,7 @@ int modify_io(char const *path, int oflag, mode_t m, int fd, cmd *c);
 
 // Include marcel.h in .c file as well as header
 %code requires {
-    #include "marcel.h"
+    #include "ds/cmd.h"
 }
 
 %union {
@@ -120,7 +120,7 @@ pipes:
     ;
 
 cmd:
-   envs WORD args {((char **) p_crawler->argv.data)[0] = $2;}
+   envs WORD args {((char **) p_crawler->argv->data)[0] = $2;}
    ;
 
 envs:
@@ -137,7 +137,7 @@ envs:
             p_crawler->next = new_cmd();
             p_crawler = p_crawler->next;
         }
-        p_crawler->argv.num = 1;
+        p_crawler->argv->num = 1;
     }
     ;
 

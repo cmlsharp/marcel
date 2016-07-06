@@ -4,6 +4,7 @@
 #include "marcel.h"
 #include <stdio.h> // fprintf
 #include <errno.h> // errno
+#include <string.h> // strerror
 
 // Length of array. ARR cannot be a pointer
 #define Arr_len(ARR) (sizeof (ARR) / sizeof *(ARR))
