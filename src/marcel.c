@@ -34,8 +34,8 @@ int main(void)
     rl_bind_key('\t', rl_complete);
 
     rl_clear_signals();
-    Stopif(setup_signals() != 0, return 1, "%s", strerror(errno));
-    Stopif(initialize_internals() != 0, return 1, "Could not initialize internals");
+    Stopif(setup_signals() != 0, return M_FAILED_INIT, "%s", strerror(errno));
+    Stopif(initialize_internals() != 0, return M_FAILED_INIT, "Could not initialize internals");
 
     // buf, b and wrap must be volatile becasue they are read from/written
     // to between Sigint_reentry (which calls sigsetbuf) and when siglongjmp

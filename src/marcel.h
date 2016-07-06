@@ -39,9 +39,10 @@ typedef struct cmd_wrapper {
 enum {
     M_SUCCESS = 0,
     M_SIGINT = -1,
-    M_FAILED_EXEC = -2,
-    M_FAILED_ALLOC = -3,
-    M_FAILED_IO = -4,
+    M_FAILED_INIT = -2,
+    M_FAILED_EXEC = -3,
+    M_FAILED_ALLOC = -4,
+    M_FAILED_IO = -5,
 };
 
 cmd *new_cmd(void);
