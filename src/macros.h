@@ -32,7 +32,7 @@
 // Standard way to print error messages across program
 #define Err_msg(...)                                                    \
     do {                                                                \
-        fprintf(stderr, "%s: ", NAME);                                  \
+        fprintf(stderr, "%s: Provocation detected: ", NAME);            \
         fprintf(stderr, __VA_ARGS__);                                   \
         fprintf(stderr, "\n");                                          \
     } while (0)

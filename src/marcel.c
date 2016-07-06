@@ -49,7 +49,7 @@ int main(void)
         add_history(buf);
         add_newline((char **) &buf);
         YY_BUFFER_STATE volatile b = yy_scan_string(buf);
-        if ((yyparse(wrap) == 0) && *wrap->root->argv.strs) {
+        if ((yyparse(wrap) == 0) && wrap->root) {
             exit_code = run_cmd(wrap); // Mutate global variable
         }
 
