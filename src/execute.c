@@ -4,6 +4,7 @@
 #include <stdlib.h> // calloc, exit, putenv
 #include <string.h> // strerror
 
+#include <fcntl.h>
 #include <sys/types.h> // pid_t
 #include <sys/wait.h> // waitpid, WIF*
 #include <unistd.h> // close, dup
@@ -61,26 +62,43 @@ void cleanup_internals(void)
     free_table(&t);
 }
 
+static void fd_cleanup(int *fd_arr, size_t n) {
+    for (size_t i = 0; i < n; i++) {
+        if (fd_arr[i] != (int) i) {
+            close(fd_arr[i]);
+        }
+    }
+}
+
 // Takes a cmd object and returns the output of the most recently executed
 // command.
-int run_cmd(cmd const *c)
+int run_cmd(cmd_wrapper const *w)
 {
-    cmd const *crawler = c;
+    int io_fd[Arr_len(w->io)] = {0, 1, 2};
+    // Open IO fds
+    for (size_t i = 0; i < Arr_len(w->io); i++) {
+        if (w->io[i].path) {
+            io_fd[i] = open(w->io[i].path, w->io[i].oflag, DEF_MODE);
+        }
+        Stopif(io_fd[i] == -1, fd_cleanup(io_fd, i); return M_FAILED_IO, "%s", strerror(errno));
+    }
+
+    cmd *crawler = w->root;
+    crawler->fds[0] = io_fd[0];
     int ret = 0;
     while (crawler) {
-        // Check if cmd is builtin
-        // Mixing data/function pointers again
+        if (crawler->next) {
+            int fd[2];
+            pipe(fd);
+            crawler->fds[1] = fd[1];
+            crawler->next->fds[0] = fd[0];
+        } else {
+            crawler->fds[1] = io_fd[1];
+            crawler->fds[2] = io_fd[2];
+        }
         cmd_func f = find_node(*crawler->argv.strs, t);
         ret = (f) ? f(crawler) : exec_cmd(crawler);
-        if (crawler->in != 0) {
-            close(crawler->in);
-        }
-        if (crawler->out != 1) {
-            close(crawler->out);
-        }
-        if (crawler->err != 2) {
-            close(crawler->err);
-        }
+        fd_cleanup(crawler->fds, Arr_len(io_fd));
         crawler = crawler->next;
     }
     return ret;
@@ -96,13 +114,15 @@ static int exec_cmd(cmd const *c)
     Stopif(p < 0, return 1, "%s", strerror(errno));
 
     if (p==0) { // Child
-        dup2(c->in , STDIN_FILENO);
-        dup2(c->out, STDOUT_FILENO);
-        dup2(c->err, STDERR_FILENO);
         for (size_t i = 0; i < c->env.num; i++) {
             Stopif(putenv(c->env.strs[i]) == -1, /* No action */,
                    "Could not set the following variable/value pair: %s", c->env.strs[i]);
         }
+
+        for (size_t i = 0;  i < Arr_len(c->fds); i++){
+            dup2(c->fds[i], i);
+        }
+
         Stopif(execvp(*c->argv.strs, c->argv.strs) == -1, exit(M_FAILED_EXEC),"%s: %s",
                strerror(errno), *c->argv.strs);
     } else if (p>0) {
@@ -148,6 +168,6 @@ static int m_help(cmd const *c)
                      "* Background jobs (via &)\n"
                      "\n"
                      "This shell only fights when provoked.";
-    dprintf(c->out, "%s\n", help_msg);
+    dprintf(c->fds[1], "%s\n", help_msg);
     return 0;
 }

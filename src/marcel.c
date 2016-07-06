@@ -22,6 +22,8 @@ int volatile exit_code = 0;
 cmd *new_cmd(void);
 void free_cmd(cmd *c);
 
+static cmd_wrapper *new_cmd_wrapper(void);
+static void free_cmd_wrapper(cmd_wrapper *w);
 static void gen_prompt(char *buf);
 static char *get_input(void);
 static void add_newline(char **buf);
@@ -35,7 +37,7 @@ int main(void)
     Stopif(setup_signals() != 0, return 1, "%s", strerror(errno));
     Stopif(initialize_internals() != 0, return 1, "Could not initialize internals");
 
-    // buf, b and crawler must be volatile becasue they are read from/written
+    // buf, b and wrap must be volatile becasue they are read from/written
     // to between Sigint_reentry (which calls sigsetbuf) and when siglongjmp
     // could be called in the SIGINT handler. Suboptimal but seemingly
     // necessary.
@@ -43,12 +45,12 @@ int main(void)
     // SIGINT before first command is executed returns here
     Sigint_init_reentry();
     while ((buf = get_input())) {
-        cmd *volatile crawler = new_cmd();
+        cmd_wrapper *volatile wrap = new_cmd_wrapper();
         add_history(buf);
         add_newline((char **) &buf);
         YY_BUFFER_STATE volatile b = yy_scan_string(buf);
-        if ((yyparse(crawler) == 0) && *crawler->argv.strs) {
-            exit_code = run_cmd(crawler); // Mutate global variable
+        if ((yyparse(wrap) == 0) && *wrap->root->argv.strs) {
+            exit_code = run_cmd(wrap); // Mutate global variable
         }
 
         // Cleanup
@@ -57,7 +59,7 @@ int main(void)
         // Free and set to NULL to ensure SIGINT in next loop iteration doesn't
         // result in double free
         Cleanup(b, yy_delete_buffer);
-        Cleanup(crawler, free_cmd);
+        Cleanup(wrap, free_cmd_wrapper);
         Free(buf);
     }
     return exit_code;
@@ -84,6 +86,13 @@ static void gen_prompt(char *buf)
     Free(dir);
 }
 
+static cmd_wrapper *new_cmd_wrapper(void)
+{
+    cmd_wrapper *ret = calloc(1, sizeof *ret);
+    Assert_alloc(ret);
+    return ret;
+}
+
 // Create a single cmd that takes input from stdin and outputs to stdout
 cmd *new_cmd(void)
 {
@@ -96,12 +105,13 @@ cmd *new_cmd(void)
         (*x)->cap = ARGV_INIT_SIZE;
     }
 
-    ret->out = 1;
-    ret->err = 2;
+    for (size_t i = 0; i < Arr_len(ret->fds); i++) {
+        ret->fds[i] = i;
+    }
+
     ret->wait = 1;
     return ret;
 }
-
 
 // Free list of command objects
 void free_cmd(cmd *c)
@@ -118,6 +128,16 @@ void free_cmd(cmd *c)
         Free(c);
         c = next;
     }
+}
+
+static void free_cmd_wrapper(cmd_wrapper *w)
+{
+    if (!w) return;
+    for (size_t i = 0; i < Arr_len(w->io); i++) {
+        Free(w->io[i].path);
+    }
+    free_cmd(w->root);
+    Free(w);
 }
 
 

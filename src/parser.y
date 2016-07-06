@@ -11,35 +11,36 @@
 #include "marcel.h" // cmd
 #include "macros.h" // Stopif, Free
 
-#define M_TRUNC (O_WRONLY | O_TRUNC | O_CREAT)
-#define M_APPEND (O_WRONLY | O_APPEND | O_CREAT)
-#define M_MODE 0644
+#define P_TRUNCATE (O_WRONLY | O_TRUNC | O_CREAT)
+#define P_APPEND (O_WRONLY | O_APPEND | O_CREAT)
 
 // First must be set to NULL to ensure next command runs successfully
-#define ABORT_PARSE do { first = NULL; YYABORT; } while (0)
+#define ABORT_PARSE do { p_crawler = NULL; YYABORT; } while (0)
 
 // I hate to use a macro for this but the lack of code duplication is worth it
-#define P_add_item(STRUCT, ENTRY)                                                           \
-    do {                                                                                    \
-        if (crawler->STRUCT.num == crawler->STRUCT.cap - 1) {                               \
-            crawler->STRUCT.strs = grow_array(crawler->STRUCT.strs, &crawler->STRUCT.cap);  \
-            Assert_alloc(crawler->STRUCT.strs);                                             \
-        }                                                                                   \
-        crawler->STRUCT.strs[crawler->STRUCT.num++] = ENTRY;                                \
+#define P_add_item(STRUCT, ENTRY)                                                               \
+    do {                                                                                        \
+        if (p_crawler->STRUCT.num == p_crawler->STRUCT.cap - 1) {                               \
+            p_crawler->STRUCT.strs = grow_array(p_crawler->STRUCT.strs, &p_crawler->STRUCT.cap);\
+            Assert_alloc(p_crawler->STRUCT.strs);                                               \
+        }                                                                                       \
+        p_crawler->STRUCT.strs[p_crawler->STRUCT.num++] = ENTRY;                                \
     } while(0)
 
-// Again, I hate making this a macro but I think reducing the noise makes the 
-// code somewhat clearer. This macro has side effects (will abort parsing and
-// free PATH if modify_io failes) which is why its name is in all caps
-#define MODIFY_IO(PATH, OFLAG, MODE, FD, C)                                                 \
-        Stopif(modify_io(PATH, OFLAG, MODE, FD, C) > 0,                                     \
-               Free(PATH); ABORT_PARSE;,                                                    \
-               "%s: %s",                                                                    \
-               (errno) ? strerror(errno) : "Setting multiple inputs/outputs not supported", PATH)                                             \
+// See above
+#define Add_io_mod(PATH, FD, OFLAG)                                                             \
+    do {                                                                                        \
+        if (!wrap->io[FD].path) {                                                               \
+            wrap->io[FD] = (cmd_io) {.path = PATH, .oflag = OFLAG};                             \
+        } else {                                                                                \
+            Err_msg("Taking/sending IO to/from more than one source not supported. "            \
+                    "Skipping \"%s\"", PATH);                                                   \
+            Free(PATH);                                                                         \
+        }                                                                                       \
+    } while (0)
+extern cmd *p_crawler;
 
-extern cmd *first;
-
-int yyerror (cmd *c, char const *s);
+int yyerror (cmd_wrapper *w, char const *s);
 
 // Opens path with the flag and mode specified by oflag and m and adds the file 
 // descriptor to the apropriate field in c
@@ -63,12 +64,12 @@ int modify_io(char const *path, int oflag, mode_t m, int fd, cmd *c);
 %type <str> real_arg
 
 %define parse.error verbose
-%parse-param {cmd *crawler}
+%parse-param {cmd_wrapper *wrap}
 
 %%
 
 cmd_line:
-    pipes io_mods bkg NL {first = NULL;}
+    pipes io_mods bkg NL {p_crawler = NULL;}
     | NL
     ;
 
@@ -76,7 +77,7 @@ bkg:
     BKG {
         Stopif(num_bkg_child() == MAX_BKG_CHILD, ABORT_PARSE,
         "Maximum background processes reached. Aborting.");
-        crawler->wait = 0;
+        p_crawler->wait = 0;
     }
     | 
     ;
@@ -88,35 +89,28 @@ io_mods:
 
 io_mod:
     IN real_arg {
-        MODIFY_IO($2, O_RDONLY, M_MODE, STDIN_FILENO, first);
-        Free($2);
+        Add_io_mod($2, 0, O_RDONLY);
     }
     | OUT_T real_arg {
-        MODIFY_IO($2, M_TRUNC, M_MODE, STDOUT_FILENO, crawler);
-        Free($2);
+        Add_io_mod($2, 1, P_TRUNCATE);
 
     }
     | OUT_ERR_T real_arg {
-        MODIFY_IO($2, M_TRUNC, M_MODE, STDOUT_FILENO,  crawler);
-        MODIFY_IO($2, M_TRUNC, M_MODE, STDERR_FILENO,  crawler);
-        Free($2);
+        Add_io_mod($2, 1, P_TRUNCATE);
+        Add_io_mod($2, 2, P_TRUNCATE);
     }
     | OUT_A real_arg {
-        MODIFY_IO($2, M_APPEND, M_MODE, STDOUT_FILENO, crawler);
-        Free($2);
+        Add_io_mod($2, 1, P_APPEND);
     }
     | OUT_ERR_A real_arg {
-        MODIFY_IO($2, M_APPEND, M_MODE, STDOUT_FILENO, crawler);
-        MODIFY_IO($2, M_APPEND, M_MODE, STDERR_FILENO, crawler);
-        Free($2);
+        Add_io_mod($2, 1, P_APPEND);
+        Add_io_mod($2, 2, P_APPEND);
     }
     | ERR_A real_arg {
-        MODIFY_IO($2, M_APPEND, M_MODE, STDERR_FILENO, crawler);
-        Free($2);
+        Add_io_mod($2, 2, P_APPEND);
     }
     | ERR_T real_arg {
-        MODIFY_IO($2, M_TRUNC, M_MODE, STDERR_FILENO, crawler);
-        Free($2);
+        Add_io_mod($2, 2, P_TRUNCATE);
     }
     ;
 
@@ -126,7 +120,7 @@ pipes:
     ;
 
 cmd:
-   envs WORD args {crawler->argv.strs[0] = $2;}
+   envs WORD args {p_crawler->argv.strs[0] = $2;}
    ;
 
 envs:
@@ -136,17 +130,14 @@ envs:
     | { // This is reached ONLY before the first arg of each pipe 
         // E.g. the command:  VAR=VAL a b | c d | VAR2=VAL2 e f
         //                   ^             ^     ^    <-- reached in those places
-        if (!first) { 
-            first = crawler;
+        if (!p_crawler) { 
+            wrap->root = new_cmd();
+            p_crawler = wrap->root;
         } else {
-            crawler->next = new_cmd();
-            int fd[2];
-            pipe(fd);
-            crawler->out = fd[1];
-            crawler->next->in = fd[0];
-            crawler = crawler->next;
+            p_crawler->next = new_cmd();
+            p_crawler = p_crawler->next;
         }
-        crawler->argv.num = 1;
+        p_crawler->argv.num = 1;
     }
     ;
 
@@ -161,32 +152,14 @@ args:
 real_arg: WORD {$$ = $1;} | ASSIGN {$$ = $1;}
 
 %%
-cmd *first = NULL;
+cmd *p_crawler = NULL;
 
 
-int yyerror (cmd *c, char const *s)
+int yyerror (cmd_wrapper *w, char const *s)
 {
-    (void) c;
-    first = NULL;
+    (void) w;
+    p_crawler = NULL;
     Stopif(1, return 0, "%s", s);
-}
-
-int modify_io(char const *path, int oflag, mode_t m, int fd, cmd *c)
-{
-    int *ptr;
-    switch (fd) {
-        case 0: ptr = &c->in; break;
-        case 1: ptr = &c->out; break;
-        case 2: ptr = &c->err; break;
-        default: return -1; break; // Function used incorrectly
-    }
-    if (*ptr == fd) {
-        int f = open(path, oflag, m);
-        if (f == -1) return 1;
-        *ptr = f;
-        return 0;
-    }
-    return 1;
 }
 
 /*yydebug = 1;*/

@@ -29,13 +29,20 @@
 
 #define Foreach(TYPE, NAME, ...) I_Foreach(TYPE *NAME, ((TYPE[]) {__VA_ARGS__})) 
 
+// Standard way to print error messages across program
+#define Err_msg(...)                                                    \
+    do {                                                                \
+        fprintf(stderr, "%s: ", NAME);                                  \
+        fprintf(stderr, __VA_ARGS__);                                   \
+        fprintf(stderr, "\n");                                          \
+    } while (0)
+        
+
 // Make error handling easier
 #define Stopif(COND, ACTION, ...)                                           \
     do {                                                                    \
         if (COND) {                                                         \
-            fprintf(stderr, "%s: ", NAME);                                  \
-            fprintf(stderr, __VA_ARGS__);                                   \
-            fprintf(stderr, "\n");                                          \
+            Err_msg(__VA_ARGS__);                                           \
             ACTION;                                                         \
         }                                                                   \
     } while (0)
