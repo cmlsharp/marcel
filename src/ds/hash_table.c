@@ -1,7 +1,6 @@
 #include <stdlib.h> // malloc, realloc
 #include <string.h> // strcmp
 
-#include "../helpers.h" // grow_array
 #include "hash_table.h" // hash_table, node
 #include "../macros.h" // Free
 
@@ -12,28 +11,15 @@
 #define TABLE_GROWTH_FACTOR 2
 static unsigned long get_index(char const *key, size_t size);
 
-hash_table *new_table(size_t size)
-{
-    if (size == 0) {
-        return NULL;
-    }
-    hash_table *ret = malloc(sizeof *ret);
-    if (!ret) {
-        return NULL;
-    }
-    ret->nodes = calloc(size, sizeof (node*));
-    if (!ret->nodes) {
-        free(ret);
-        return NULL;
-    }
-    ret->size = 0;
-    ret->capacity = size;
-    return ret;
+__attribute__((always_inline))
+inline hash_table *new_table(size_t nmemb) {
+    return new_dyn_array(nmemb, sizeof (node *));
 }
 
 void delete_node(char const *k, hash_table *t)
 {
-    node *crawler = t->nodes[get_index(k, t->capacity)];
+    node **nodes = (node **)t->data;
+    node *crawler = nodes[get_index(k, t->cap)];
     node *prev = NULL;
     while (crawler) {
         if (strcmp(k, crawler->key) == 0) {
@@ -41,7 +27,7 @@ void delete_node(char const *k, hash_table *t)
                 prev->next = crawler->next;
             }
             Free(crawler);
-            t->size--;
+            t->num--;
             return;
         }
     }
@@ -49,16 +35,14 @@ void delete_node(char const *k, hash_table *t)
 
 int add_node(char const *k, void *v, hash_table *t)
 {
-    if (!t || !t->nodes) {
+    if (!t || !t->data) {
         return -1;
     }
-    if (t->size + 1 >= t->capacity) {
-        t->nodes = grow_array(t->nodes, &t->capacity);
-        if (!t->nodes) {
+    if (t->num + 1 >= t->cap) {
+        if (grow_dyn_array(t) != 0) {
             return -1;
         }
     }
-
     node *new = malloc(sizeof (node));
     if (!new) {
         return -1;
@@ -66,20 +50,22 @@ int add_node(char const *k, void *v, hash_table *t)
 
     new->key = k;
     new->value = v;
-    unsigned long i = get_index(k, t->capacity);
-    new->next = t->nodes[i];
+    unsigned long i = get_index(k, t->cap);
+    node **nodes = (node **) t->data;
+    new->next = nodes[i];
 
-    t->nodes[i] = new;
-    t->size++;
+    nodes[i] = new;
+    t->num++;
     return 0;
 }
 
 void *find_node(char const *k, hash_table const *t)
 {
-    if (!t || !t->nodes) {
+    if (!t || !t->data) {
         return NULL;
     }
-    node *crawler = t->nodes[get_index(k, t->capacity)];
+    node **nodes = (node **) t->data;
+    node *crawler = nodes[get_index(k, t->cap)];
     while (crawler) {
         if (strcmp(crawler->key, k) == 0) {
             return crawler->value;
@@ -89,21 +75,22 @@ void *find_node(char const *k, hash_table const *t)
     return NULL;
 }
 
-void free_table(hash_table **t)
+void free_table(hash_table *t)
 {
     if (!t) {
         return;
     }
-    for (size_t i = 0; i < (*t)->capacity; i++) {
-        node *crawler = (*t)->nodes[i];
+    // Free contents
+    node **nodes = (node **) t->data;
+    for (size_t i = 0; i < t->cap; i++) {
+        node *crawler = nodes[i];
         while (crawler) {
             node *next = crawler->next;
             Free(crawler);
             crawler = next;
         }
     }
-    Free((*t)->nodes);
-    Free(*t);
+    free_dyn_array(t);
 }
 
 

@@ -59,7 +59,7 @@ int initialize_internals(void)
 // Wrapper around free_table so it can be passed to atexit
 void cleanup_internals(void)
 {
-    free_table(&t);
+    Cleanup(t, free_table);
 }
 
 static void fd_cleanup(int *fd_arr, size_t n) {

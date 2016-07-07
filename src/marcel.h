@@ -3,7 +3,6 @@
 
 #define NAME "marcel"
 #define VERSION "1.0"
-#define ARGV_INIT_SIZE 1024
 #define DEF_MODE 0666
 
 // This variable is modified only in the main function and the signal handling 

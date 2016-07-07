@@ -1,7 +1,9 @@
 #ifndef MARCEL_HASH_H
 #define MARCEL_HASH_H
 
-#define TABLE_INIT_SIZE 1024 
+#define TABLE_INIT_SIZE 1024
+
+#include "dyn_array.h"
 
 
 typedef struct node {
@@ -10,18 +12,12 @@ typedef struct node {
     struct node *next; // Pointer to next node (in case of conflicts
 } node;
 
-typedef struct hash_table {
-    node **nodes; // Array of nodes
-    size_t capacity; // Size of **nodes
-    size_t size; // Number of key/value pairs in table
-} hash_table;
-
-
+typedef dyn_array hash_table;
 
 hash_table *new_table(size_t size);
 int add_node(char const *k, void *v, hash_table *t);
 void *find_node(char const *k, hash_table const *t);
 void delete_node(char const *k, hash_table *t);
-void free_table(hash_table **t);
+void free_table(hash_table *t);
 
 #endif

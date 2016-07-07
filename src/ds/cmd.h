@@ -1,6 +1,8 @@
 #ifndef M_CMD_H
 #define M_CMD_H
 
+#define ARGV_INIT_SIZE 1024
+
 #include "dyn_array.h"
 // Struct to model a single command
 typedef struct cmd {

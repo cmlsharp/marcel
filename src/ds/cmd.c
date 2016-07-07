@@ -26,7 +26,7 @@ void free_cmd(cmd *c)
         dyn_array **a[] = {&c->argv, &c->env};
         for (size_t i = 0 ; i < Arr_len(a); i++) {
             char ***strs = (char ***) &(*a[i])->data;
-            for (size_t j = 0; (*strs)[j] && i < (*a[j])->cap; j++) {
+            for (size_t j = 0; j < (*a[i])->cap && (*strs)[j] ; j++) {
                 Free((*strs)[j]);
             }
             free_dyn_array(*a[i]);

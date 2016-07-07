@@ -8,7 +8,6 @@
 #include "children.h" // MAX_BKG_CHILD, num_bkg_child
 #include "ds/cmd.h" // cmd, cmd_wrapper
 #include "lexer.h" // yylex (in bison generated code)
-#include "helpers.h" // grow_array
 #include "macros.h" // Stopif, Free
 
 #define P_TRUNCATE (O_WRONLY | O_TRUNC | O_CREAT)
@@ -21,8 +20,7 @@
 #define P_add_item(STRUCT, ENTRY)                                                                   \
     do {                                                                                            \
         if (p_crawler->STRUCT->num == p_crawler->STRUCT->cap - 1) {                                 \
-            p_crawler->STRUCT->data = grow_array(p_crawler->STRUCT->data, &p_crawler->STRUCT->cap); \
-            Assert_alloc(p_crawler->STRUCT->data);                                                  \
+            Assert_alloc(grow_dyn_array(p_crawler->STRUCT) == 0);                                   \
         }                                                                                           \
         ((char **) p_crawler->STRUCT->data)[p_crawler->STRUCT->num++] = ENTRY;                      \
     } while(0)
