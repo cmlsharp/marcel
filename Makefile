@@ -1,10 +1,17 @@
 # Tell make to stop removing intermediate files
 .SECONDARY:
 
+## For compiling with g++
+#CC = g++ $(G++FLAGS)
+#STD = c++11
+#G++FLAGS = -fkeep-inline-functions 
+
 CC = gcc
-CFLAGS = -Wall -O0 -ggdb3 -Wextra -Werror -pipe -fstack-protector -Wl,-zrelro -Wl,-z,now -Wformat-security -std=c11
+STD = c11
+DEBUG = -O0 -ggdb3 
+CFLAGS = -Wall $(DEBUG) -Wextra -Werror -pipe -fstack-protector -Wformat-security -Wno-missing-field-initializers -Winline -std=$(STD)
 EXE = marcel
-LIBS = -lreadline -lfl
+LDFLAGS = -lreadline -lfl
 
 SRCDIR = src
 OBJDIR = obj
@@ -26,7 +33,6 @@ endef
 
 all: $(EXE)
 
-
 %.c %.h: %.y 
 	bison --defines=$(@:.c=.h) --output=$(@:.h=.c) $<
 
@@ -36,7 +42,7 @@ all: $(EXE)
 
 
 $(EXE): $(OBJS) 
-	$(CC) $(CFLAGS) -o $@ $^ $(LIBS)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
 
 

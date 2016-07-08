@@ -18,9 +18,6 @@
     } while (0)
         
 
-// Make casting look a little prettier
-#define Cast(TYPE, VAL) ((TYPE) VAL)
-
 // Make error handling easier
 #define Stopif(COND, ACTION, ...)                                           \
     do {                                                                    \
@@ -48,5 +45,23 @@
 
 // Stop double frees/use after frees
 #define Free(PTR) Cleanup (PTR, free)
+
+// Explicitly cast pointers if compiling as C++
+#ifdef __cplusplus
+#define Cast(TYPE) (TYPE)
+#else
+#define Cast(TYPE)
+#endif
+
+// GCC pops twice for every push to reset to commandline specified option
+#if defined (__GNUC__) && ((__GNUC__ > 3) || (defined(__GNUC_MINOR__) && (__GNUC__ == 3) && (__GNUC_MINOR__ >= 4)))
+// GCC
+#define GCC_POP _Pragma("GCC diagnostic pop"); _Pragma("GCC diagnostic pop")
+#else
+#define GCC_POP _Pragma("GCC diagnostic pop");
+#endif
+
+// Symmetry with GCC_POP
+#define GCC_PUSH _Pragma("GCC diagnostic push")
 
 #endif

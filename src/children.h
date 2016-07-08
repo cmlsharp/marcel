@@ -1,6 +1,7 @@
 #ifndef MARCEL_CHILDREN_H
 #define MARCEL_CHILDREN_H
 
+#include "marcel.h" // _Bool typedef for g++ compatibility
 #include <sys/types.h> // pid_t
 
 #define MAX_BKG_CHILD 1024

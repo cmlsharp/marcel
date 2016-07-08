@@ -27,10 +27,19 @@ static void handle_signals(int signo)
         siglongjmp(_sigbuf, 1);
         break;
     case SIGQUIT:
-        puts("\nQuit (core dumped)");
-        // Ignored signals are inherited by child. By putting SIG_IGN in a
-        // signal handling function, child will still respond to SIGINT
+        if (has_active_child()) {
+            printf("Quit. (Core dumped)");
+        }
+#ifdef __cplusplus
+GCC_PUSH;
+#pragma GCC diagnostic ignored "-Wunused-value"
+#endif
+        // Signal handler not passed to child but ignored signals are. This is
+        // easier than resetting to SIG_DEF before executing child
         SIG_IGN;
+#ifdef __cplusplus
+GCC_POP;
+#endif
         break;
     case SIGCHLD:
         for (;;) {

@@ -1,4 +1,8 @@
 %{
+#ifdef __cplusplus
+extern "C" int yylex(void);
+#endif
+
 #include <errno.h> // errno
 #include <string.h>
 
@@ -8,7 +12,7 @@
 #include "children.h" // MAX_BKG_CHILD, num_bkg_child
 #include "ds/cmd.h" // cmd, cmd_wrapper
 #include "lexer.h" // yylex (in bison generated code)
-#include "macros.h" // Stopif, Free
+#include "macros.h" // Stopif, Free, Cast
 
 #define P_TRUNCATE (O_WRONLY | O_TRUNC | O_CREAT)
 #define P_APPEND (O_WRONLY | O_APPEND | O_CREAT)

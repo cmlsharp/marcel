@@ -5,6 +5,10 @@
 #define VERSION "1.0"
 #define DEF_MODE 0666
 
+#ifdef __cplusplus
+typedef bool _Bool;
+#endif
+
 // This variable is modified only in the main function and the signal handling 
 // function for SIGINT
 extern int volatile exit_code;

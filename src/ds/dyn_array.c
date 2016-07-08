@@ -1,7 +1,7 @@
 #include <stdlib.h> // calloc, realloc
 #include <string.h> // memset
 #include "dyn_array.h" // dyn_array
-#include "../macros.h" // Assert_alloc
+#include "../macros.h" // Assert_alloc, Cast
 
 #ifndef SIZE_MAX
 #define SIZE_MAX ((size_t) -1)
@@ -11,7 +11,7 @@
 // type
 dyn_array *new_dyn_array(size_t nmemb, size_t size)
 {
-    dyn_array *ret = malloc(sizeof *ret);
+    dyn_array *ret = Cast(dyn_array*) malloc(sizeof *ret);
     Assert_alloc(ret);
 
     ret->data = calloc(nmemb, size);
