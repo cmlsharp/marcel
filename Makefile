@@ -9,7 +9,7 @@
 CC = gcc
 STD = c11
 DEBUG = -O0 -ggdb3 
-CFLAGS = -Wall $(DEBUG) -Wextra -Werror -pipe -fstack-protector -Wformat-security -Wno-missing-field-initializers -Winline -std=$(STD)
+CFLAGS = -Wall $(DEBUG) -Wextra -Werror -pipe -fstack-protector -Wformat-security -Wno-missing-field-initializers -Wno-unused-function -std=$(STD)
 EXE = marcel
 LDFLAGS = -lreadline -lfl
 

@@ -10,6 +10,7 @@ extern "C" int yylex(void);
 
 GCC_PUSH;
 #pragma GCC diagnostic ignored "-Wunused-function"
+#pragma GCC diagnostic ignored "-Wsign-compare"
 #ifndef __cplusplus
 #pragma GCC diagnostic ignored "-Wimplicit-function-declaration"
 #pragma GCC diagnostic ignored "-Wint-conversion"
