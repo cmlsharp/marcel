@@ -10,11 +10,12 @@ Practice shell implementation
 * IO redirection (stdin, stdout, stderr)
 * Sane lexing + parsing (via flex and bison)
     * Supports quoted strings
-* Background jobs
+* Background jobs (kinda)
 * Keeping track of background jobs
 * Setting environment variables per command
 
 ### What isn't:
+* Real job control
 * Set local variables
 * Set environment variables for entire session (e.g. export)
 * Escape sequences

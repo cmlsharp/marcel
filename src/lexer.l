@@ -6,6 +6,7 @@
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-function"
 #pragma GCC diagnostic ignored "-Wimplicit-function-declaration"
+#pragma GCC diagnostic ignored "-Wsign-compare"
 #pragma GCC diagnostic ignored "-Wint-conversion"
 char *esc_strdup(char *str);
 %}
@@ -49,8 +50,6 @@ L_WORD ({NO_R_CHARS}|\\{R_CHARS})+
 
 %%
 
-#pragma GCC diagnostic pop
-#pragma GCC diagnostic pop
 
 char *esc_strdup(char *str)
 {
@@ -67,3 +66,4 @@ char *esc_strdup(char *str)
     }
     return ret;
 }
+#pragma GCC diagnostic pop

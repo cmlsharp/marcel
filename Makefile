@@ -2,7 +2,7 @@
 .SECONDARY:
 
 CC = gcc
-CFLAGS = -Wall -O0 -ggdb3 -Wextra -Werror -pipe -fstack-protector -Wl,-zrelro -Wl,-z,now -Wformat-security -std=c11
+CFLAGS = -Wall -O0 -ggdb3 -Wextra -Werror -pipe -fstack-protector -Wformat-security -Wno-unused-function -std=c11
 EXE = marcel
 LIBS = -lreadline -lfl
 
@@ -49,6 +49,6 @@ $(OBJDIR)/%.o: $(SRCDIR)/ds/%.c $(HDRS)
 -include $(wildcard $(OBJDIR)/*.d)
 
 clean:
-	rm -f core $(EXE) $(basename $(FLEX)).{h,c} $(basename $(BSON)).{h,c}
+	rm -f core $(EXE) $(basename $(FLEX)).h $(basename $(FLEX)).c $(basename $(BSON)).h $(basename $(BSON)).c
 	rm -r $(OBJDIR)
 
