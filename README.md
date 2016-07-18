@@ -21,7 +21,3 @@ Practice shell implementation
 * Defining aliases/functions
 * Anything else not mentioned in the above section
 * Unit testing
-
-In my tests, marcel compiles under both gcc and clang. 
-
-As of right now, marcel can also be compiled as C++ (see Makefile). 

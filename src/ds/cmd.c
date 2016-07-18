@@ -1,11 +1,11 @@
 #include <stdlib.h>
 
-#include "cmd.h" // cmd
-#include "../macros.h" // Cast, Assert_alloc, Free
+#include "cmd.h"
+#include "../macros.h"
 
 cmd *new_cmd(void)
 {
-    cmd *ret = Cast(cmd*) calloc(1, sizeof *ret);
+    cmd *ret = calloc(1, sizeof *ret);
     Assert_alloc(ret);
     ret->argv = new_dyn_array(ARGV_INIT_SIZE, sizeof (char*));
     ret->env = new_dyn_array(ARGV_INIT_SIZE, sizeof (char*));
@@ -40,7 +40,7 @@ void free_cmd(cmd *c)
 
 cmd_wrapper *new_cmd_wrapper(void)
 {
-    cmd_wrapper *ret = Cast(cmd_wrapper*) calloc(1, sizeof *ret);
+    cmd_wrapper *ret = calloc(1, sizeof *ret);
     Assert_alloc(ret);
     return ret;
 }

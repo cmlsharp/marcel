@@ -3,7 +3,6 @@
 
 #define ARGV_INIT_SIZE 1024
 
-#include "../marcel.h" // _Bool (g++ compatibility)
 #include "dyn_array.h"
 // Struct to model a single command
 typedef struct cmd {

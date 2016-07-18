@@ -2,7 +2,7 @@
 #include <string.h> // strcmp
 
 #include "hash_table.h" // hash_table, node
-#include "../macros.h" // Free, Cast
+#include "../macros.h" // Free
 
 #ifndef SIZE_MAX
 #define SIZE_MAX ((size_t) -1)
@@ -43,18 +43,18 @@ int add_node(char const *k, void *v, hash_table *t)
             return -1;
         }
     }
-    node *new_node = Cast(node *) malloc(sizeof (node));
-    if (!new_node) {
+    node *new = malloc(sizeof (node));
+    if (!new) {
         return -1;
     }
 
-    new_node->key = k;
-    new_node->value = v;
+    new->key = k;
+    new->value = v;
     unsigned long i = get_index(k, t->cap);
     node **nodes = (node **) t->data;
-    new_node->next = nodes[i];
+    new->next = nodes[i];
 
-    nodes[i] = new_node;
+    nodes[i] = new;
     t->num++;
     return 0;
 }

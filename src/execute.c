@@ -1,9 +1,7 @@
-#ifndef __cplusplus
 #define _GNU_SOURCE // dprintf
-#endif
 #include <errno.h> // errno
 #include <stdio.h> // close
-#include <stdlib.h> // exit, putenv
+#include <stdlib.h> // calloc, exit, putenv
 #include <string.h> // strerror
 
 #include <fcntl.h>
@@ -15,7 +13,7 @@
 #include "ds/cmd.h" // cmd, cmd_wrapper
 #include "ds/hash_table.h" // hash_table, add_node, find_node, free_table
 #include "execute.h" // cmd_func
-#include "macros.h" // Stopif, Free, Arr_len, GCC_PUSH, GCC_POP, Cast
+#include "macros.h" // Stopif, Free, Arr_len
 
 static int exec_cmd(cmd const *c);
 static void cleanup_internals(void);
@@ -47,7 +45,7 @@ int initialize_internals(void)
     // NOTE: We are mixing data pointers and function pointers here. ISO C
     // forbids this but it's fine in POSIX
     for (size_t i = 0; i < Arr_len(builtin_names); i++) {
-        if (add_node(builtin_names[i], Cast(void*) builtin_funcs[i], t) != 0) {
+        if (add_node(builtin_names[i], builtin_funcs[i], t) != 0) {
             return -1;
         }
     }
@@ -98,8 +96,8 @@ int run_cmd(cmd_wrapper const *w)
             crawler->fds[1] = io_fd[1];
             crawler->fds[2] = io_fd[2];
         }
-        char **argv = Cast(char **) crawler->argv->data;
-        cmd_func f = Cast(cmd_func) find_node(argv[0], t);
+        char **argv = crawler->argv->data;
+        cmd_func f = find_node(argv[0], t);
         ret = (f) ? f(crawler) : exec_cmd(crawler);
         fd_cleanup(crawler->fds, Arr_len(io_fd));
         crawler = crawler->next;
@@ -107,7 +105,7 @@ int run_cmd(cmd_wrapper const *w)
     return ret;
 }
 
-GCC_PUSH;
+#pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wreturn-type"
 static int exec_cmd(cmd const *c)
 {
@@ -115,8 +113,8 @@ static int exec_cmd(cmd const *c)
     pid_t p = fork();
 
     Stopif(p < 0, return 1, "%s", strerror(errno));
-    char **argv = Cast(char **) c->argv->data;
-    char **env  = Cast(char **) c->env->data;
+    char **argv = c->argv->data;
+    char **env  = c->env->data;
 
     if (p==0) { // Child
         for (size_t i = 0; i < c->env->num; i++) {
@@ -144,12 +142,13 @@ static int exec_cmd(cmd const *c)
         return WEXITSTATUS(status); // Return exit code
     }
 }
-GCC_POP;
+#pragma GCC diagnostic pop
+#pragma GCC diagnostic pop
 
 static int m_cd(cmd const *c)
 {
     // Avoid casting from void* at every use
-    char **argv = Cast(char **) c->argv->data;
+    char **argv = c->argv->data;
     // cd to homedir if no directory specified
     char *dir = (argv[1]) ? argv[1] : getenv("HOME");
     Stopif(chdir(dir) == -1, return 1, "%s", strerror(errno));
@@ -164,7 +163,7 @@ static int m_exit(cmd const *c)
 
 static int m_help(cmd const *c)
 {
-    char help_msg[] = "Marcel the Shell (with shoes on) v. " VERSION "\n"
+    char *help_msg = "Marcel the Shell (with shoes on) v. " VERSION "\n"
                      "Written by Chad Sharp\n"
                      "\n"
                      "Features:\n"

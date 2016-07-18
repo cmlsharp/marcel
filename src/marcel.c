@@ -1,6 +1,4 @@
-#ifndef __cplusplus
 #define _GNU_SOURCE // asprintf
-#endif
 
 #include <stdio.h> // readline
 #include <stdlib.h> // calloc, getenv
@@ -21,14 +19,15 @@
 #define MAX_PROMPT_LEN 1024
 int volatile exit_code = 0;
 
-static char *get_input(void);
 static void gen_prompt(char *buf);
+static char *get_input(void);
 static void add_newline(char **buf);
 
 int main(void)
 {
     // Use tab for shell completion
     rl_bind_key('\t', rl_complete);
+
     rl_clear_signals();
     Stopif(setup_signals() != 0, return M_FAILED_INIT, "%s", strerror(errno));
     Stopif(initialize_internals() != 0, return M_FAILED_INIT, "Could not initialize internals");
@@ -72,7 +71,7 @@ static char *get_input(void)
 }
 
 // Creates shell prompt based on username and current directory
-static inline void gen_prompt(char *buf)
+static void gen_prompt(char *buf)
 {
     char *user = getenv("USER");
     char *dir = getcwd(NULL, 1024);
@@ -83,7 +82,7 @@ static inline void gen_prompt(char *buf)
 }
 
 // Grammar expects newline and readline doesn't supply it
-static inline void add_newline(char **buf)
+static void add_newline(char **buf)
 {
     char *nbuf;
     Assert_alloc(asprintf(&nbuf, "%s\n", *buf) != -1);
