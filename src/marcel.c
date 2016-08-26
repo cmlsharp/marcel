@@ -9,55 +9,85 @@
 #include <readline/readline.h> // readline, rl_complete
 #include <readline/history.h> // add_history
 
-#include "ds/cmd.h" // cmd, cmd_wrapper etc.
-#include "execute.h" // run_cmd, initialize_internals
-#include "macros.h" // Stopif, Free
-#include "signals.h" // setup_signals
-#include "parser.h" // yyparse
+#include "ds/cmd.h" // cmd, job etc.
+#include "execute.h" // launch_job, initialize_builtins
+#include "jobs.h" // initialize_job_control, do_job_notification
 #include "lexer.h" // YY_BUFFER_STATE, yy_delete_buffer, yy_scan_string
+#include "macros.h" // Stopif, Free
+#include "parser.h" // yyparse
+#include "signals.h" // setup_signals
 
 #define MAX_PROMPT_LEN 1024
-int volatile exit_code = 0;
+int exit_code = 0;
 
+static void cleanup_readline(void);
 static void gen_prompt(char *buf);
 static char *get_input(void);
 static void add_newline(char **buf);
 
 int main(void)
 {
+
+    Stopif(!initialize_job_control(), return M_FAILED_INIT, "Could not initialize job control");
+    Stopif(!initialize_builtins(), return M_FAILED_INIT, "Could not initialize builtin commands");
+    initialize_signal_handling();
+
+    rl_clear_signals();
+
     // Use tab for shell completion
     rl_bind_key('\t', rl_complete);
 
-    rl_clear_signals();
-    Stopif(setup_signals() != 0, return M_FAILED_INIT, "%s", strerror(errno));
-    Stopif(initialize_internals() != 0, return M_FAILED_INIT, "Could not initialize internals");
+    // buffer for stdin
+    char *buf = NULL;
 
-    // buf, b and wrap must be volatile becasue they are read from/written
-    // to between Sigint_reentry (which calls sigsetbuf) and when siglongjmp
-    // could be called in the SIGINT handler. Suboptimal but seemingly
-    // necessary.
-    char *volatile buf = NULL;
-    // SIGINT before first command is executed returns here
-    Sigint_init_reentry();
+    // SIGINT before first command returns here
+    while (sigsetjmp(_sigbuf, 1)) cleanup_readline();
+    run_queued_signals();
+    sig_flags |= WAITING_FOR_INPUT;
+    
     while ((buf = get_input())) {
-        cmd_wrapper *volatile wrap = new_cmd_wrapper();
+        sig_flags &= ~WAITING_FOR_INPUT;
+        sig_default(SIGCHLD);
+
+        job *j = new_job();
+        j->name = strdup(buf);
+        Assert_alloc(j->name);
+
         add_history(buf);
         add_newline((char **) &buf);
-        YY_BUFFER_STATE volatile b = yy_scan_string(buf);
-        if ((yyparse(wrap) == 0) && wrap->root) {
-            exit_code = run_cmd(wrap); // Mutate global variable
+
+        YY_BUFFER_STATE b = yy_scan_string(buf);
+        if ((yyparse(j) == 0) && j->root) {
+            register_job(j);
+            launch_job(j); 
+        } else {
+            Cleanup(j, free_single_job);
         }
 
-        // Cleanup
-        Sigint_reentry();
+        do_job_notification();
+        sig_handle(SIGCHLD);
 
-        // Free and set to NULL to ensure SIGINT in next loop iteration doesn't
-        // result in double free
         Cleanup(b, yy_delete_buffer);
-        Cleanup(wrap, free_cmd_wrapper);
         Free(buf);
+
+
+        // If returning from siglongjmp, cleanup readline and give new prompt
+        while (sigsetjmp(_sigbuf, 1)) cleanup_readline();
+        run_queued_signals();
+        sig_flags |= WAITING_FOR_INPUT;
+
     }
     return exit_code;
+}
+
+// Cleanup readline in order to get a new prompt
+static void cleanup_readline(void) 
+{
+    rl_free_line_state();
+    rl_cleanup_after_signal();
+    RL_UNSETSTATE(RL_STATE_ISEARCH|RL_STATE_NSEARCH|RL_STATE_VIMOTION|RL_STATE_NUMERICARG|RL_STATE_MULTIKEY);
+    rl_line_buffer[rl_point = rl_end = rl_mark = 0] = 0;
+    printf("\n");
 }
 
 // Prints prompt and returns line entered by user. Returned string must be
@@ -66,8 +96,7 @@ static char *get_input(void)
 {
     char prompt_buf[MAX_PROMPT_LEN] = {0};
     gen_prompt(prompt_buf);
-    char *line = readline(prompt_buf);
-    return line;
+    return readline(prompt_buf);
 }
 
 // Creates shell prompt based on username and current directory
@@ -89,5 +118,4 @@ static void add_newline(char **buf)
     Free(*buf);
     *buf = nbuf;
 }
-
 

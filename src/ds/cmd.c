@@ -13,8 +13,6 @@ cmd *new_cmd(void)
     for (size_t i = 0; i < Arr_len(ret->fds); i++) {
         ret->fds[i] = i;
     }
-
-    ret->wait = 1;
     return ret;
 }
 
@@ -38,20 +36,24 @@ void free_cmd(cmd *c)
     }
 }
 
-cmd_wrapper *new_cmd_wrapper(void)
+// Allocate new job with all fields initialized to 0. Panics on allocation
+// failure
+job *new_job(void)
 {
-    cmd_wrapper *ret = calloc(1, sizeof *ret);
+    job *ret = calloc(1, sizeof *ret);
     Assert_alloc(ret);
     return ret;
 }
 
-void free_cmd_wrapper(cmd_wrapper *w)
+// Free all dynamically allocated fields in job and job itself
+void free_single_job(job *j)
 {
-    if (!w) return;
-    for (size_t i = 0; i < Arr_len(w->io); i++) {
-        Free(w->io[i].path);
+    if (!j) return;
+    for (size_t i = 0; i < Arr_len(j->io); i++) {
+        Free(j->io[i].path);
     }
-    free_cmd(w->root);
-    Free(w);
+    Free(j->name);
+    free_cmd(j->root);
+    Free(j);
 }
 

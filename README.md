@@ -1,5 +1,6 @@
 #Marcel the Shell (with shoes on)
-Practice shell implementation
+Practice shell implementation  
+Name is a reference to [this video](https://www.youtube.com/watch?v=VF9-sEbqDvU)
 
 ### What's done:
 * Command execution
@@ -10,15 +11,13 @@ Practice shell implementation
 * IO redirection (stdin, stdout, stderr)
 * Sane lexing + parsing (via flex and bison)
     * Supports quoted strings
-* Background jobs (kinda)
-* Keeping track of background jobs
+* Proper job control
+* Safe signal handling via queueing
 * Setting environment variables per command
 
 ### What isn't:
-* Real job control
 * Set local variables
 * Set environment variables for entire session (e.g. export)
 * Escape sequences
 * Defining aliases/functions
 * Anything else not mentioned in the above section
-* Unit testing

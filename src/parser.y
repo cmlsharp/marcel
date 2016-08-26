@@ -5,8 +5,7 @@
 #include <fcntl.h> // read, write, O_*
 #include <unistd.h> // pipe
 
-#include "children.h" // MAX_BKG_CHILD, num_bkg_child
-#include "ds/cmd.h" // cmd, cmd_wrapper
+#include "ds/cmd.h" // cmd, job
 #include "lexer.h" // yylex (in bison generated code)
 #include "macros.h" // Stopif, Free
 
@@ -28,8 +27,8 @@
 // See above
 #define Add_io_mod(PATH, FD, OFLAG)                                                                 \
     do {                                                                                            \
-        if (!wrap->io[FD].path) {                                                                   \
-            wrap->io[FD] = (cmd_io) {.path = PATH, .oflag = OFLAG};                                 \
+        if (!p_job->io[FD].path) {                                                                   \
+            p_job->io[FD] = (cmd_io) {.path = PATH, .oflag = OFLAG};                                 \
         } else {                                                                                    \
             Err_msg("Taking/sending IO to/from more than one source not supported. "                \
                     "Skipping \"%s\"", PATH);                                                       \
@@ -38,11 +37,7 @@
     } while (0)
 extern cmd *p_crawler;
 
-int yyerror (cmd_wrapper *w, char const *s);
-
-// Opens path with the flag and mode specified by oflag and m and adds the file 
-// descriptor to the apropriate field in c
-int modify_io(char const *path, int oflag, mode_t m, int fd, cmd *c);
+int yyerror (job *w, char const *s);
 
 %}
 
@@ -62,7 +57,7 @@ int modify_io(char const *path, int oflag, mode_t m, int fd, cmd *c);
 %type <str> real_arg
 
 %define parse.error verbose
-%parse-param {cmd_wrapper *wrap}
+%parse-param {job *p_job}
 
 %%
 
@@ -73,9 +68,7 @@ cmd_line:
 
 bkg:
     BKG {
-        Stopif(num_bkg_child() == MAX_BKG_CHILD, ABORT_PARSE,
-        "Maximum background processes reached. Aborting.");
-        p_crawler->wait = 0;
+        p_job->bkg = 1;
     }
     | 
     ;
@@ -129,8 +122,8 @@ envs:
         // E.g. the command:  VAR=VAL a b | c d | VAR2=VAL2 e f
         //                   ^             ^     ^    <-- reached in those places
         if (!p_crawler) { 
-            wrap->root = new_cmd();
-            p_crawler = wrap->root;
+            p_job->root = new_cmd();
+            p_crawler = p_job->root;
         } else {
             p_crawler->next = new_cmd();
             p_crawler = p_crawler->next;
@@ -153,7 +146,7 @@ real_arg: WORD {$$ = $1;} | ASSIGN {$$ = $1;}
 cmd *p_crawler = NULL;
 
 
-int yyerror (cmd_wrapper *w, char const *s)
+int yyerror (job *w, char const *s)
 {
     (void) w;
     p_crawler = NULL;

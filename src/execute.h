@@ -6,7 +6,8 @@
 // Builtin function
 typedef int (*cmd_func)(cmd const*);
 
-int run_cmd(cmd_wrapper const *w);
-int initialize_internals(void);
+int launch_job(job *j);
+_Bool initialize_builtins(void);
+
 
 #endif

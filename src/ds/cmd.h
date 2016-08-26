@@ -3,13 +3,19 @@
 
 #define ARGV_INIT_SIZE 1024
 
+#include <sys/types.h>
+#include <termios.h>
 #include "dyn_array.h"
-// Struct to model a single command
+
+// Struct to model a single command (process)
 typedef struct cmd {
     dyn_array *argv; // Arguments to be passed to execvp
     dyn_array *env; // Environment variables in the form "VAR=VALUE"
+    pid_t pid; // Pid of command
     int fds[3]; // File descriptors for input, output, error
-    _Bool wait; // Wait for child process to finish
+    _Bool completed; // Command has finished executing
+    _Bool stopped; // Command has been stopped
+    int exit_code; // Status code cmd exited with
     struct cmd *next; // Pointer to next piped cmd
 } cmd;
 
@@ -22,11 +28,18 @@ typedef struct cmd_io {
     int oflag;
 } cmd_io;
 
-typedef struct cmd_wrapper {
-    cmd_io io[3];
-    cmd *root;
-} cmd_wrapper;
+typedef struct job {
+    struct job *next;
+    char *name; // Name of command
+    cmd *root; // First command
+    cmd_io io[3]; // stdin, stdout and stderr
+    pid_t pgid; // Proc group ID for job
+    _Bool notified; // User has been notified of state change
+    _Bool bkg; // Job should execute in background
+    struct termios tmodes; // Terminal modes for job
+} job;
 
-cmd_wrapper *new_cmd_wrapper(void);
-void free_cmd_wrapper(cmd_wrapper *w);
+job *new_job(void);
+void free_single_job(job *j);
+
 #endif

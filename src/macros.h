@@ -12,14 +12,10 @@
 // Standard way to print error messages across program
 #define Err_msg(...)                                                    \
     do {                                                                \
-        fprintf(stderr, "%s: Provocation detected: ", NAME);            \
+        fprintf(stderr, "%s:%s:%d: ", NAME, __FILE__, __LINE__);        \
         fprintf(stderr, __VA_ARGS__);                                   \
         fprintf(stderr, "\n");                                          \
     } while (0)
-        
-
-// Make casting look a little prettier
-#define Cast(TYPE, VAL) ((TYPE) VAL)
 
 // Make error handling easier
 #define Stopif(COND, ACTION, ...)                                           \

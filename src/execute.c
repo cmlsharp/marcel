@@ -4,60 +4,61 @@
 #include <stdlib.h> // calloc, exit, putenv
 #include <string.h> // strerror
 
-#include <fcntl.h>
+#include <fcntl.h> // open, close
 #include <sys/types.h> // pid_t
-#include <sys/wait.h> // waitpid, WIF*
-#include <unistd.h> // close, dup
+#include <unistd.h> // close, dup, getpid, setpgid, tcsetpgrp
 
-#include "children.h" // add_bkg_child, del_bkg_proc
-#include "ds/cmd.h" // cmd, cmd_wrapper
+#include "ds/cmd.h" // cmd, job
 #include "ds/hash_table.h" // hash_table, add_node, find_node, free_table
 #include "execute.h" // cmd_func
+#include "jobs.h" // shell_is_interactive, shell_term, wait_for_job, put_job_in_*...
 #include "macros.h" // Stopif, Free, Arr_len
+#include "signals.h" // reset_signals
 
-static int exec_cmd(cmd const *c);
-static void cleanup_internals(void);
+static void cleanup_builtins(void);
+static void exec_cmd(cmd const *c);
 static int m_cd(cmd const *c);
 static int m_exit(cmd const *c);
 static int m_help(cmd const *c);
 
 // Names of shell builtins
-char const *builtin_names[] = {
+static char const *builtin_names[] = {
     "cd",
     "exit",
     "help",
 };
 
 // Functions associated with shell builtins
-cmd_func const builtin_funcs[] = {
+static cmd_func const builtin_funcs[] = {
     &m_cd,
     &m_exit,
     &m_help
 };
 
 // Hash table for shell builtins
-hash_table *t;
+static hash_table *t;
 
 // Create hashtable of shell builtins
-int initialize_internals(void)
+// Returns true on success, false on failure
+_Bool initialize_builtins(void)
 {
     t = new_table(TABLE_INIT_SIZE);
     // NOTE: We are mixing data pointers and function pointers here. ISO C
     // forbids this but it's fine in POSIX
     for (size_t i = 0; i < Arr_len(builtin_names); i++) {
         if (add_node(builtin_names[i], builtin_funcs[i], t) != 0) {
-            return -1;
+            return 0;
         }
     }
 
-    if (atexit(cleanup_internals) != 0) {
-        return -1;
+    if (atexit(cleanup_builtins) != 0) {
+        return 0;
     }
-    return 0;
+    return 1;
 }
 
 // Wrapper around free_table so it can be passed to atexit
-void cleanup_internals(void)
+static void cleanup_builtins(void)
 {
     Cleanup(t, free_table);
 }
@@ -70,80 +71,99 @@ static void fd_cleanup(int *fd_arr, size_t n) {
     }
 }
 
-// Takes a cmd object and returns the output of the most recently executed
-// command.
-int run_cmd(cmd_wrapper const *w)
+// Set process group for process and give pgid to term
+// Needs to be done in both parent and child to
+// avoid race condition. Macro prevents code duplication and preserves
+// assignment side effect without using pointers
+#define Set_proc_group(JOB, PID, PGID)          \
+    do {                                        \
+        if (shell_is_interactive) {             \
+            if (!PGID) PGID = PID;              \
+            setpgid(PID, PGID);                 \
+            if (!JOB->bkg)                      \
+                tcsetpgrp(shell_term, PGID);    \
+        }                                       \
+    } while (0)
+
+// Takes a job and returns the exit status of its last process
+int launch_job(job *j)
 {
-    int io_fd[Arr_len(w->io)] = {0, 1, 2};
+    int io_fd[Arr_len(j->io)] = {0, 1, 2};
     // Open IO fds
-    for (size_t i = 0; i < Arr_len(w->io); i++) {
-        if (w->io[i].path) {
-            io_fd[i] = open(w->io[i].path, w->io[i].oflag, DEF_MODE);
+    for (size_t i = 0; i < Arr_len(j->io); i++) {
+        if (j->io[i].path) {
+            io_fd[i] = open(j->io[i].path, j->io[i].oflag, DEF_MODE);
         }
         Stopif(io_fd[i] == -1, fd_cleanup(io_fd, i); return M_FAILED_IO, "%s", strerror(errno));
     }
-
-    cmd *crawler = w->root;
-    crawler->fds[0] = io_fd[0];
-    int ret = 0;
-    while (crawler) {
+    j->root->fds[0] = io_fd[0];
+    for (cmd *crawler = j->root; crawler; crawler = crawler->next) {
         if (crawler->next) {
             int fd[2];
             pipe(fd);
             crawler->fds[1] = fd[1];
             crawler->next->fds[0] = fd[0];
         } else {
+            // Alterations to stdout and stderr apply to last process
             crawler->fds[1] = io_fd[1];
             crawler->fds[2] = io_fd[2];
         }
+
         char **argv = crawler->argv->data;
         cmd_func f = find_node(argv[0], t);
-        ret = (f) ? f(crawler) : exec_cmd(crawler);
+
+        if (f) { // Builtin found
+            crawler->exit_code = f(crawler);
+            crawler->completed = 1;
+        } else {
+            pid_t p = fork();
+            Stopif(p < 0, return M_FAILED_EXEC, "Could not fork process: %s", strerror(errno));
+            if (p == 0) { // Child
+                p = getpid();
+                Set_proc_group(j, p, j->pgid);
+                reset_ignored_signals();
+                exec_cmd(crawler);
+            } else { // Parent
+                Set_proc_group(j, p, j->pgid);
+                crawler->pid = p;
+            }
+        }
+
         fd_cleanup(crawler->fds, Arr_len(io_fd));
-        crawler = crawler->next;
     }
-    return ret;
+
+    if (!shell_is_interactive) wait_for_job(j);
+    else if (j->bkg) put_job_in_background(j, 0);
+    else put_job_in_foreground(j, 0);
+
+    return 0;
 }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wreturn-type"
-static int exec_cmd(cmd const *c)
+static void exec_cmd(cmd const *c)
 {
-    int status = 0;
-    pid_t p = fork();
-
-    Stopif(p < 0, return 1, "%s", strerror(errno));
     char **argv = c->argv->data;
     char **env  = c->env->data;
 
-    if (p==0) { // Child
-        for (size_t i = 0; i < c->env->num; i++) {
-            Stopif(putenv(env[i]) == -1, /* No action */,
-                   "Could not set the following variable/value pair: %s", env[i]);
-        }
-
-        for (size_t i = 0;  i < Arr_len(c->fds); i++){
-            dup2(c->fds[i], i);
-        }
-
-        Stopif(execvp(*argv, argv) == -1, exit(M_FAILED_EXEC),"%s: %s",
-               strerror(errno), *argv);
-    } else if (p>0) {
-        if (!c->wait) {
-            size_t job_num = add_bkg_child(p);
-            Stopif(job_num == 0, return 1, "Maximum number of background jobs reached");
-            printf("Background job number [%zu] created\n", job_num);
-            return 0;
-        }
-        set_active_child(p);
-        do {
-            waitpid(p, &status, WUNTRACED);
-        } while (!WIFEXITED(status) && !WIFSIGNALED(status) && !WIFSTOPPED(status));
-        return WEXITSTATUS(status); // Return exit code
+    for (size_t i = 0; i < c->env->num; i++) {
+        Stopif(putenv(env[i]) == -1, /* No action */,
+               "Could not set the following variable/value pair: %s", env[i]);
     }
+
+    for (size_t i = 0;  i < Arr_len(c->fds); i++){
+        dup2(c->fds[i], i);
+    }
+
+    Stopif(execvp(*argv, argv) == -1, exit(M_FAILED_EXEC),"%s: %s",
+       strerror(errno), *argv);
 }
-#pragma GCC diagnostic pop
-#pragma GCC diagnostic pop
+
+// Wrapper function arround setpgid to reduce code duplication in parent and
+// child processes;
+static inline void set_proc_group(pid_t pid, pid_t *pgid)
+{
+    if (*pgid == 0) *pgid = pid;
+    setpgid(pid, *pgid);
+}
 
 static int m_cd(cmd const *c)
 {

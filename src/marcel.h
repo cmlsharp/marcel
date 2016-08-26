@@ -5,9 +5,8 @@
 #define VERSION "1.0"
 #define DEF_MODE 0666
 
-// This variable is modified only in the main function and the signal handling 
-// function for SIGINT
-extern int volatile exit_code;
+// Most recent exit code
+extern int exit_code;
 
 // Dynamically allocated array that keeps track of its size
 
@@ -18,6 +17,7 @@ enum {
     M_FAILED_EXEC = -3,
     M_FAILED_ALLOC = -4,
     M_FAILED_IO = -5,
+    M_FAILED_PGID = -6,
 };
 
 
