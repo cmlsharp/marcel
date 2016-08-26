@@ -12,9 +12,9 @@
 #include "signals.h"
 
 #if ((SIG_ATOMIC_MAX - 1) < 1024)
-    #define MAX_QUEUE_SIZE ((size_t) SIG_ATOMIC_MAX)
+#define MAX_QUEUE_SIZE ((size_t) SIG_ATOMIC_MAX)
 #else
-    #define MAX_QUEUE_SIZE ((size_t) 1024)
+#define MAX_QUEUE_SIZE ((size_t) 1024)
 #endif
 
 
@@ -50,7 +50,7 @@ sigset_t sig_block(sigset_t new)
     sigset_t old;
     sigprocmask(SIG_BLOCK, &new, &old);
     return old;
-} 
+}
 
 // Remove signals in `new` from signal mask and return previous signal mask
 sigset_t sig_unblock(sigset_t new)
@@ -63,9 +63,9 @@ sigset_t sig_unblock(sigset_t new)
 // Set signal mask, return previous signal mask
 sigset_t sig_setmask(sigset_t new)
 {
-      sigset_t old;
-      sigprocmask(SIG_SETMASK, &new, &old);
-      return old;
+    sigset_t old;
+    sigprocmask(SIG_SETMASK, &new, &old);
+    return old;
 }
 
 // Ignore signal
@@ -82,7 +82,8 @@ void sig_default(int sig)
 
 // Signal queueing
 
-void run_queued_signals(void) {
+void run_queued_signals(void)
+{
     while (queue_front != queue_back) {
         queue_front = (queue_front + 1) % MAX_QUEUE_SIZE;
         handler_sync(signal_queue[queue_front]);
@@ -100,7 +101,9 @@ static void handler_async(int signo)
     Stopif(temp == queue_front, /* No action */, "Signal queue is full");
     if (temp != queue_front) {
         queue_back = temp;
-        signal_queue[queue_back] = (sigstate) { .sig = signo, .mask = old };
+        signal_queue[queue_back] = (sigstate) {
+            .sig = signo, .mask = old
+        };
     }
 
     if (sig_flags & WAITING_FOR_INPUT) {
@@ -115,12 +118,12 @@ static void handler_sync(sigstate state)
 {
     sigset_t old = sig_setmask(state.mask);
     switch (state.sig) {
-        case SIGINT:
-            exit_code = M_SIGINT;
-            break;
-        case SIGCHLD:
-            do_job_notification();
-            break;
+    case SIGINT:
+        exit_code = M_SIGINT;
+        break;
+    case SIGCHLD:
+        do_job_notification();
+        break;
     }
     sig_setmask(old);
 }
@@ -130,8 +133,9 @@ static int ignored_signals[] = {SIGTTOU, SIGTTIN, SIGTSTP};
 void initialize_signal_handling(void)
 {
     if (shell_is_interactive) {
-        for (size_t i = 0; i < Arr_len(ignored_signals); i++)
+        for (size_t i = 0; i < Arr_len(ignored_signals); i++) {
             sig_ignore(ignored_signals[i]);
+        }
 
         sig_handle(SIGINT);
     }
@@ -140,7 +144,8 @@ void initialize_signal_handling(void)
 void reset_ignored_signals(void)
 {
     if (shell_is_interactive) {
-        for (size_t i = 0; i < Arr_len(ignored_signals); i++)
+        for (size_t i = 0; i < Arr_len(ignored_signals); i++) {
             sig_ignore(ignored_signals[i]);
+        }
     }
 }

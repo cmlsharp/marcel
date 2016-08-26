@@ -63,7 +63,8 @@ static void cleanup_builtins(void)
     Cleanup(t, free_table);
 }
 
-static void fd_cleanup(int *fd_arr, size_t n) {
+static void fd_cleanup(int *fd_arr, size_t n)
+{
     for (size_t i = 0; i < n; i++) {
         if (fd_arr[i] != (int) i) {
             close(fd_arr[i]);
@@ -94,7 +95,8 @@ int launch_job(job *j)
         if (j->io[i].path) {
             io_fd[i] = open(j->io[i].path, j->io[i].oflag, DEF_MODE);
         }
-        Stopif(io_fd[i] == -1, fd_cleanup(io_fd, i); return M_FAILED_IO, "%s", strerror(errno));
+        Stopif(io_fd[i] == -1, fd_cleanup(io_fd, i);
+               return M_FAILED_IO, "%s", strerror(errno));
     }
     j->root->fds[0] = io_fd[0];
     for (cmd *crawler = j->root; crawler; crawler = crawler->next) {
@@ -117,7 +119,8 @@ int launch_job(job *j)
             crawler->completed = 1;
         } else {
             pid_t p = fork();
-            Stopif(p < 0, return M_FAILED_EXEC, "Could not fork process: %s", strerror(errno));
+            Stopif(p < 0, return M_FAILED_EXEC, "Could not fork process: %s",
+                   strerror(errno));
             if (p == 0) { // Child
                 p = getpid();
                 Set_proc_group(j, p, j->pgid);
@@ -132,9 +135,13 @@ int launch_job(job *j)
         fd_cleanup(crawler->fds, Arr_len(io_fd));
     }
 
-    if (!shell_is_interactive) wait_for_job(j);
-    else if (j->bkg) put_job_in_background(j, 0);
-    else put_job_in_foreground(j, 0);
+    if (!shell_is_interactive) {
+        wait_for_job(j);
+    } else if (j->bkg) {
+        put_job_in_background(j, 0);
+    } else {
+        put_job_in_foreground(j, 0);
+    }
 
     return 0;
 }
@@ -149,19 +156,21 @@ static void exec_cmd(cmd const *c)
                "Could not set the following variable/value pair: %s", env[i]);
     }
 
-    for (size_t i = 0;  i < Arr_len(c->fds); i++){
+    for (size_t i = 0;  i < Arr_len(c->fds); i++) {
         dup2(c->fds[i], i);
     }
 
     Stopif(execvp(*argv, argv) == -1, exit(M_FAILED_EXEC),"%s: %s",
-       strerror(errno), *argv);
+           strerror(errno), *argv);
 }
 
 // Wrapper function arround setpgid to reduce code duplication in parent and
 // child processes;
 static inline void set_proc_group(pid_t pid, pid_t *pgid)
 {
-    if (*pgid == 0) *pgid = pid;
+    if (*pgid == 0) {
+        *pgid = pid;
+    }
     setpgid(pid, *pgid);
 }
 

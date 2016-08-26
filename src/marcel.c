@@ -28,8 +28,10 @@ static void add_newline(char **buf);
 int main(void)
 {
 
-    Stopif(!initialize_job_control(), return M_FAILED_INIT, "Could not initialize job control");
-    Stopif(!initialize_builtins(), return M_FAILED_INIT, "Could not initialize builtin commands");
+    Stopif(!initialize_job_control(), return M_FAILED_INIT,
+           "Could not initialize job control");
+    Stopif(!initialize_builtins(), return M_FAILED_INIT,
+           "Could not initialize builtin commands");
     initialize_signal_handling();
 
     rl_clear_signals();
@@ -41,10 +43,12 @@ int main(void)
     char *buf = NULL;
 
     // SIGINT before first command returns here
-    while (sigsetjmp(_sigbuf, 1)) cleanup_readline();
+    while (sigsetjmp(_sigbuf, 1)) {
+        cleanup_readline();
+    }
     run_queued_signals();
     sig_flags |= WAITING_FOR_INPUT;
-    
+
     while ((buf = get_input())) {
         sig_flags &= ~WAITING_FOR_INPUT;
         sig_default(SIGCHLD);
@@ -59,7 +63,7 @@ int main(void)
         YY_BUFFER_STATE b = yy_scan_string(buf);
         if ((yyparse(j) == 0) && j->root) {
             register_job(j);
-            launch_job(j); 
+            launch_job(j);
         } else {
             Cleanup(j, free_single_job);
         }
@@ -72,7 +76,9 @@ int main(void)
 
 
         // If returning from siglongjmp, cleanup readline and give new prompt
-        while (sigsetjmp(_sigbuf, 1)) cleanup_readline();
+        while (sigsetjmp(_sigbuf, 1)) {
+            cleanup_readline();
+        }
         run_queued_signals();
         sig_flags |= WAITING_FOR_INPUT;
 
@@ -81,11 +87,12 @@ int main(void)
 }
 
 // Cleanup readline in order to get a new prompt
-static void cleanup_readline(void) 
+static void cleanup_readline(void)
 {
     rl_free_line_state();
     rl_cleanup_after_signal();
-    RL_UNSETSTATE(RL_STATE_ISEARCH|RL_STATE_NSEARCH|RL_STATE_VIMOTION|RL_STATE_NUMERICARG|RL_STATE_MULTIKEY);
+    RL_UNSETSTATE(
+        RL_STATE_ISEARCH|RL_STATE_NSEARCH|RL_STATE_VIMOTION|RL_STATE_NUMERICARG|RL_STATE_MULTIKEY);
     rl_line_buffer[rl_point = rl_end = rl_mark = 0] = 0;
     printf("\n");
 }

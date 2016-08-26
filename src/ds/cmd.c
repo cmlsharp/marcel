@@ -48,7 +48,9 @@ job *new_job(void)
 // Free all dynamically allocated fields in job and job itself
 void free_single_job(job *j)
 {
-    if (!j) return;
+    if (!j) {
+        return;
+    }
     for (size_t i = 0; i < Arr_len(j->io); i++) {
         Free(j->io[i].path);
     }

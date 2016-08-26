@@ -23,7 +23,8 @@ dyn_array *new_dyn_array(size_t nmemb, size_t size)
     return ret;
 }
 
-void free_dyn_array(dyn_array *d) {
+void free_dyn_array(dyn_array *d)
+{
     Free(d->data);
     Free(d);
 }
@@ -54,5 +55,5 @@ int grow_dyn_array(dyn_array *d)
     d->cap = new_cap;
     d->data = new_data;
     return 0;
-    
+
 }

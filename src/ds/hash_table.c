@@ -12,7 +12,8 @@
 static unsigned long get_index(char const *key, size_t size);
 
 __attribute__((always_inline))
-inline hash_table *new_table(size_t nmemb) {
+inline hash_table *new_table(size_t nmemb)
+{
     return new_dyn_array(nmemb, sizeof (node *));
 }
 

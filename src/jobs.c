@@ -35,7 +35,8 @@ _Bool initialize_job_control(void)
         }
         // Put in own process group
         shell_pgid = getpid();
-        Stopif(setpgid(shell_pgid, shell_pgid) < 0, return 0, "Couldn't put shell in its own process group");
+        Stopif(setpgid(shell_pgid, shell_pgid) < 0, return 0,
+               "Couldn't put shell in its own process group");
 
         // Get control of terminal
         tcsetpgrp(shell_term, shell_pgid);
@@ -53,7 +54,8 @@ void put_job_in_foreground(job *j, _Bool cont)
     // Send SIGCONT if necessary
     if (cont) {
         tcsetattr(shell_term, TCSADRAIN, &j->tmodes);
-        Stopif(kill(-j->pgid, SIGCONT) < 0, /* No action */, "Error continuing process: %s", strerror(errno));
+        Stopif(kill(-j->pgid, SIGCONT) < 0, /* No action */,
+               "Error continuing process: %s", strerror(errno));
     }
     wait_for_job(j);
     // Put shell in foreground
@@ -69,7 +71,9 @@ void put_job_in_foreground(job *j, _Bool cont)
 void put_job_in_background(job *j, _Bool cont)
 {
     // Send SIGCONT if necessary
-    if (cont) Stopif(kill(-j->pgid, SIGCONT) < 0, /* No action */, "%s", strerror(errno));
+    if (cont) {
+        Stopif(kill(-j->pgid, SIGCONT) < 0, /* No action */, "%s", strerror(errno));
+    }
 }
 
 // Find cmd that corresponds with pid and mark it as stopped or completed as
@@ -81,8 +85,11 @@ _Bool mark_cmd_status(pid_t pid, int status)
             for (cmd *c = j->root; c; c = c->next) {
                 if (c->pid == pid) {
                     c->exit_code = WEXITSTATUS(status);
-                    if (WIFSTOPPED(status) || WIFCONTINUED(status)) c->stopped = !c->stopped;
-                    else c->completed = 1;
+                    if (WIFSTOPPED(status) || WIFCONTINUED(status)) {
+                        c->stopped = !c->stopped;
+                    } else {
+                        c->completed = 1;
+                    }
                     return 1;
                 }
             }
@@ -137,9 +144,14 @@ int do_job_notification(void)
         // If all cmds have completed, job is completed
         if (job_is_completed(j)) {
             // Only notify about background jobs
-            if (j->bkg) format_job_info(j, "completed");
-            if (jlast) jlast->next = jnext;
-            else first_job = jnext;
+            if (j->bkg) {
+                format_job_info(j, "completed");
+            }
+            if (jlast) {
+                jlast->next = jnext;
+            } else {
+                first_job = jnext;
+            }
 
             // Get exit code from last process in
             cmd *c;
@@ -151,13 +163,12 @@ int do_job_notification(void)
             format_job_info(j, "stopped");
             j->notified = 1;
             jlast = j;
-        }
-        else {
+        } else {
             jlast = j;
         }
     }
     return ret;
-    
+
 }
 
 // Mark stopped job as running
@@ -184,7 +195,9 @@ void continue_job(job *j)
 job *find_job(pid_t pgid, job const *crawler)
 {
     for (; crawler; crawler = crawler->next) {
-        if (crawler->pgid == pgid) return (job *) crawler; // Cast silences discarded qualifier warning
+        if (crawler->pgid == pgid) {
+            return (job *) crawler;    // Cast silences discarded qualifier warning
+        }
     }
     return NULL;
 }
@@ -194,7 +207,9 @@ _Bool job_is_stopped(job *j)
 {
     cmd *c;
     for (c = j->root; c; c = c->next) {
-        if (!c->completed && !c->stopped) return 0;  
+        if (!c->completed && !c->stopped) {
+            return 0;
+        }
     }
     return 1;
 }
@@ -204,7 +219,9 @@ _Bool job_is_completed(job *j)
 {
     cmd *c;
     for (c = j->root; c; c = c->next) {
-        if (!c->completed) return 0;
+        if (!c->completed) {
+            return 0;
+        }
     }
     return 1;
 }
