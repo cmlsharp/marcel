@@ -11,7 +11,7 @@
 #include "ds/cmd.h" // cmd, job
 #include "ds/hash_table.h" // hash_table, add_node, find_node, free_table
 #include "execute.h" // cmd_func
-#include "jobs.h" // shell_is_interactive, shell_term, wait_for_job, put_job_in_*...
+#include "jobs.h" // interactive, shell_term, wait_for_job, put_job_in_*...
 #include "macros.h" // Stopif, Free, Arr_len
 #include "signals.h" // reset_signals
 
@@ -78,7 +78,7 @@ static void fd_cleanup(int *fd_arr, size_t n)
 // assignment side effect without using pointers
 #define Set_proc_group(JOB, PID, PGID)          \
     do {                                        \
-        if (shell_is_interactive) {             \
+        if (interactive) {             \
             if (!PGID) PGID = PID;              \
             setpgid(PID, PGID);                 \
             if (!JOB->bkg)                      \
@@ -122,7 +122,6 @@ int launch_job(job *j)
             Stopif(p < 0, return M_FAILED_EXEC, "Could not fork process: %s",
                    strerror(errno));
             if (p == 0) { // Child
-                p = getpid();
                 Set_proc_group(j, p, j->pgid);
                 reset_ignored_signals();
                 exec_cmd(crawler);
@@ -135,10 +134,11 @@ int launch_job(job *j)
         fd_cleanup(crawler->fds, Arr_len(io_fd));
     }
 
-    if (!shell_is_interactive) {
+    if (!interactive) {
         wait_for_job(j);
     } else if (j->bkg) {
         put_job_in_background(j, 0);
+        format_job_info(j, "launched");
     } else {
         put_job_in_foreground(j, 0);
     }
@@ -162,16 +162,6 @@ static void exec_cmd(cmd const *c)
 
     Stopif(execvp(*argv, argv) == -1, exit(M_FAILED_EXEC),"%s: %s",
            strerror(errno), *argv);
-}
-
-// Wrapper function arround setpgid to reduce code duplication in parent and
-// child processes;
-static inline void set_proc_group(pid_t pid, pid_t *pgid)
-{
-    if (*pgid == 0) {
-        *pgid = pid;
-    }
-    setpgid(pid, *pgid);
 }
 
 static int m_cd(cmd const *c)

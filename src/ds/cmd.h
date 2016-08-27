@@ -31,6 +31,7 @@ typedef struct cmd_io {
 typedef struct job {
     struct job *next;
     char *name; // Name of command
+    size_t index; // Index in job table
     cmd *root; // First command
     cmd_io io[3]; // stdin, stdout and stderr
     pid_t pgid; // Proc group ID for job

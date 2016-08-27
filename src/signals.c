@@ -21,6 +21,7 @@
 typedef struct sigstate {
     int sig;
     sigset_t mask;
+    sig_atomic_t flags;
 } sigstate;
 
 static void handler_sync(sigstate state);
@@ -98,12 +99,14 @@ static void handler_async(int signo)
     sigset_t old = sig_block(new);
 
     int temp = ++queue_back % MAX_QUEUE_SIZE;
-    Stopif(temp == queue_front, /* No action */, "Signal queue is full");
     if (temp != queue_front) {
         queue_back = temp;
         signal_queue[queue_back] = (sigstate) {
-            .sig = signo, .mask = old
+            .sig = signo, .mask = old, .flags = sig_flags,
         };
+    } else {
+        // This really shouldn't ever happen
+        sig_flags |= QUEUE_FULL;
     }
 
     if (sig_flags & WAITING_FOR_INPUT) {
@@ -117,12 +120,14 @@ static void handler_async(int signo)
 static void handler_sync(sigstate state)
 {
     sigset_t old = sig_setmask(state.mask);
+    Stopif(sig_flags & QUEUE_FULL, sig_flags &= ~QUEUE_FULL,
+           "At least one signal was not handled because signal queue was full");
     switch (state.sig) {
     case SIGINT:
         exit_code = M_SIGINT;
         break;
     case SIGCHLD:
-        do_job_notification();
+        exit_code = do_job_notification();
         break;
     }
     sig_setmask(old);
@@ -132,7 +137,7 @@ static int ignored_signals[] = {SIGTTOU, SIGTTIN, SIGTSTP};
 
 void initialize_signal_handling(void)
 {
-    if (shell_is_interactive) {
+    if (interactive) {
         for (size_t i = 0; i < Arr_len(ignored_signals); i++) {
             sig_ignore(ignored_signals[i]);
         }
@@ -143,7 +148,7 @@ void initialize_signal_handling(void)
 
 void reset_ignored_signals(void)
 {
-    if (shell_is_interactive) {
+    if (interactive) {
         for (size_t i = 0; i < Arr_len(ignored_signals); i++) {
             sig_ignore(ignored_signals[i]);
         }

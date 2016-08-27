@@ -45,10 +45,8 @@ int grow_dyn_array(dyn_array *d)
     } else {
         return 1;
     }
-    void *new_data;
-    if (!(new_data = realloc(d->data, bytes))) {
-        return 1;
-    }
+    void *new_data = realloc(d->data, bytes);
+    Assert_alloc(new_data);
     // initialize with zeros
     size_t new_cap = bytes/d->size;
     memset((char *)new_data + (d->size * d->cap), 0, (new_cap - d->cap) * d->size);

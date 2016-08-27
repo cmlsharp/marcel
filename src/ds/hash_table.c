@@ -1,4 +1,4 @@
-#include <stdlib.h> // malloc, realloc
+#include <stdlib.h> // malloc
 #include <string.h> // strcmp
 
 #include "hash_table.h" // hash_table, node
@@ -45,9 +45,7 @@ int add_node(char const *k, void *v, hash_table *t)
         }
     }
     node *new = malloc(sizeof (node));
-    if (!new) {
-        return -1;
-    }
+    Assert_alloc(new);
 
     new->key = k;
     new->value = v;

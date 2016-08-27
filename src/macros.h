@@ -9,10 +9,16 @@
 // Length of array. ARR cannot be a pointer
 #define Arr_len(ARR) (sizeof (ARR) / sizeof *(ARR))
 
+#ifdef DEBUG
+#define Error_prefix "%s (%s:%d): ", NAME, __FILE__, __LINE__
+#else
+#define Error_prefix "%s: ", NAME
+#endif
+
 // Standard way to print error messages across program
 #define Err_msg(...)                                                    \
     do {                                                                \
-        fprintf(stderr, "%s:%s:%d: ", NAME, __FILE__, __LINE__);        \
+        fprintf(stderr, Error_prefix);                                  \
         fprintf(stderr, __VA_ARGS__);                                   \
         fprintf(stderr, "\n");                                          \
     } while (0)
@@ -29,7 +35,7 @@
 
 #define Assert_alloc(PTR)                                                   \
     Stopif(!(PTR),                                                          \
-           _Exit(M_FAILED_ALLOC),                                           \
+           exit(M_FAILED_ALLOC),                                            \
            "Fatal error encountered. Quitting. System reports %s",          \
            strerror(errno))
 

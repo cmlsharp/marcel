@@ -9,8 +9,9 @@ extern sigjmp_buf _sigbuf;
 
 extern sig_atomic_t sig_flags;
 enum {
-    WAITING_FOR_INPUT = (1 << 0) // Process was waiting for input when it recieved signal
-                        // To be continued...
+    WAITING_FOR_INPUT = (1 << 0), // Process was waiting for input when it recieved signal
+    QUEUE_FULL = (1 << 1),
+    // To be continued...
 };
 
 void initialize_signal_handling(void);

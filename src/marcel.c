@@ -45,6 +45,7 @@ int main(void)
     // SIGINT before first command returns here
     while (sigsetjmp(_sigbuf, 1)) {
         cleanup_readline();
+        printf("\n");
     }
     run_queued_signals();
     sig_flags |= WAITING_FOR_INPUT;
@@ -68,7 +69,7 @@ int main(void)
             Cleanup(j, free_single_job);
         }
 
-        do_job_notification();
+        exit_code = do_job_notification();
         sig_handle(SIGCHLD);
 
         Cleanup(b, yy_delete_buffer);
@@ -78,6 +79,7 @@ int main(void)
         // If returning from siglongjmp, cleanup readline and give new prompt
         while (sigsetjmp(_sigbuf, 1)) {
             cleanup_readline();
+            printf("\n");
         }
         run_queued_signals();
         sig_flags |= WAITING_FOR_INPUT;
@@ -94,7 +96,6 @@ static void cleanup_readline(void)
     RL_UNSETSTATE(
         RL_STATE_ISEARCH|RL_STATE_NSEARCH|RL_STATE_VIMOTION|RL_STATE_NUMERICARG|RL_STATE_MULTIKEY);
     rl_line_buffer[rl_point = rl_end = rl_mark = 0] = 0;
-    printf("\n");
 }
 
 // Prints prompt and returns line entered by user. Returned string must be

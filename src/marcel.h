@@ -17,7 +17,6 @@ enum {
     M_FAILED_EXEC = -3,
     M_FAILED_ALLOC = -4,
     M_FAILED_IO = -5,
-    M_FAILED_PGID = -6,
 };
 
 
