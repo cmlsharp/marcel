@@ -5,7 +5,7 @@
 #include <fcntl.h> // read, write, O_*
 #include <unistd.h> // pipe
 
-#include "ds/cmd.h" // cmd, job
+#include "ds/proc.h" // proc, job
 #include "lexer.h" // yylex (in bison generated code)
 #include "macros.h" // Stopif, Free
 
@@ -27,15 +27,15 @@
 // See above
 #define Add_io_mod(PATH, FD, OFLAG)                                                                 \
     do {                                                                                            \
-        if (!p_job->io[FD].path) {                                                                   \
-            p_job->io[FD] = (cmd_io) {.path = PATH, .oflag = OFLAG};                                 \
+        if (!p_job->io[FD].path) {                                                                  \
+            p_job->io[FD] = (proc_io) {.path = PATH, .oflag = OFLAG};                               \
         } else {                                                                                    \
             Err_msg("Taking/sending IO to/from more than one source not supported. "                \
                     "Skipping \"%s\"", PATH);                                                       \
             Free(PATH);                                                                             \
         }                                                                                           \
     } while (0)
-extern cmd *p_crawler;
+extern proc *p_crawler;
 
 int yyerror (job *w, char const *s);
 
@@ -43,7 +43,7 @@ int yyerror (job *w, char const *s);
 
 // Include marcel.h in .c file as well as header
 %code requires {
-    #include "ds/cmd.h"
+    #include "ds/proc.h"
 }
 
 %union {
@@ -122,10 +122,10 @@ envs:
         // E.g. the command:  VAR=VAL a b | c d | VAR2=VAL2 e f
         //                   ^             ^     ^    <-- reached in those places
         if (!p_crawler) { 
-            p_job->root = new_cmd();
+            p_job->root = new_proc();
             p_crawler = p_job->root;
         } else {
-            p_crawler->next = new_cmd();
+            p_crawler->next = new_proc();
             p_crawler = p_crawler->next;
         }
         p_crawler->argv->num = 1;
@@ -143,7 +143,7 @@ args:
 real_arg: WORD {$$ = $1;} | ASSIGN {$$ = $1;}
 
 %%
-cmd *p_crawler = NULL;
+proc *p_crawler = NULL;
 
 
 int yyerror (job *w, char const *s)

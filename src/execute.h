@@ -1,10 +1,10 @@
 #ifndef MARCEL_EXEC_H
 #define MARCEL_EXEC_H
 
-#include "ds/cmd.h" // cmd
+#include "ds/proc.h" // proc
 
 // Builtin function
-typedef int (*cmd_func)(cmd const*);
+typedef int (*proc_func)(proc const*);
 
 int launch_job(job *j);
 _Bool initialize_builtins(void);

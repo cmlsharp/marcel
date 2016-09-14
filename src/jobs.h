@@ -1,15 +1,17 @@
 #ifndef M_JOB_CTRL
 #define M_JOB_CTRL
 
-#include "ds/cmd.h" // job
+#include "ds/proc.h" // job
+
+#define SHELL_TERM STDIN_FILENO
 
 extern _Bool interactive;
-extern int shell_term;
+
 
 _Bool initialize_job_control(void);
 void put_job_in_foreground(job *j, _Bool cont);
 void put_job_in_background(job *j, _Bool cont);
-_Bool mark_cmd_status(pid_t pid, int status);
+_Bool mark_proc_status(pid_t pid, int status);
 void update_status(void);
 void wait_for_job(job *j);
 void format_job_info(job *j, char const *msg);

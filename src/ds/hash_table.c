@@ -94,11 +94,11 @@ void free_table(hash_table *t)
 
 
 // Modified djb2
+// Requires key to be a valid string ending in '\0'
 static unsigned long get_index(char const *key, size_t size)
 {
     unsigned long hash = 5381;
-    int c;
-    while ((c = *key++)) {
+    for  (char c = *key; c; c++) {
         hash = ((hash << 5) + hash) + c;
     }
     return hash & (size - 1);

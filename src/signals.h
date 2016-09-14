@@ -5,7 +5,7 @@
 #include <setjmp.h>
 
 // This variable is only accessed via the two macros below
-extern sigjmp_buf _sigbuf;
+extern sigjmp_buf sigbuf;
 
 extern sig_atomic_t sig_flags;
 enum {

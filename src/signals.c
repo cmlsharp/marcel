@@ -11,10 +11,15 @@
 #include "macros.h"
 #include "signals.h"
 
+// SIG_ATOMIC_MAX is only guaranteed to be at least 127
 #if ((SIG_ATOMIC_MAX - 1) < 1024)
 #define MAX_QUEUE_SIZE ((size_t) SIG_ATOMIC_MAX)
 #else
 #define MAX_QUEUE_SIZE ((size_t) 1024)
+#endif
+
+#ifndef __GNUC__ 
+#define __attribute__(X)
 #endif
 
 
@@ -28,7 +33,7 @@ static void handler_sync(sigstate state);
 static void handler_async(int signo);
 
 // Buffer to allow jumps out of signal handler
-sigjmp_buf _sigbuf;
+sigjmp_buf sigbuf;
 
 sig_atomic_t volatile queue_front, queue_back;
 sigstate volatile signal_queue[MAX_QUEUE_SIZE];
@@ -36,7 +41,8 @@ sigstate volatile signal_queue[MAX_QUEUE_SIZE];
 // Bitmask passed to signal handler
 sig_atomic_t sig_flags;
 
-void sig_handle(int sig)
+__attribute__((always_inline))
+extern inline void sig_handle(int sig)
 {
     struct sigaction act = {0};
     sigemptyset(&act.sa_mask);
@@ -46,7 +52,8 @@ void sig_handle(int sig)
 }
 
 
-sigset_t sig_block(sigset_t new)
+__attribute__((always_inline))
+static inline sigset_t sig_block(sigset_t new)
 {
     sigset_t old;
     sigprocmask(SIG_BLOCK, &new, &old);
@@ -54,7 +61,8 @@ sigset_t sig_block(sigset_t new)
 }
 
 // Remove signals in `new` from signal mask and return previous signal mask
-sigset_t sig_unblock(sigset_t new)
+__attribute__((always_inline))
+extern inline sigset_t sig_unblock(sigset_t new)
 {
     sigset_t old;
     sigprocmask(SIG_UNBLOCK, &new, &old);
@@ -62,7 +70,8 @@ sigset_t sig_unblock(sigset_t new)
 }
 
 // Set signal mask, return previous signal mask
-sigset_t sig_setmask(sigset_t new)
+__attribute__((always_inline))
+static inline sigset_t sig_setmask(sigset_t new)
 {
     sigset_t old;
     sigprocmask(SIG_SETMASK, &new, &old);
@@ -70,20 +79,22 @@ sigset_t sig_setmask(sigset_t new)
 }
 
 // Ignore signal
-void sig_ignore(int sig)
+__attribute__((always_inline))
+extern inline void sig_ignore(int sig)
 {
     signal(sig, SIG_IGN);
 }
 
 // Reset signal handler to default action
-void sig_default(int sig)
+__attribute__((always_inline))
+extern inline void sig_default(int sig)
 {
     signal(sig, SIG_DFL);
 }
 
 // Signal queueing
-
-void run_queued_signals(void)
+__attribute__((always_inline))
+extern inline void run_queued_signals(void)
 {
     while (queue_front != queue_back) {
         queue_front = (queue_front + 1) % MAX_QUEUE_SIZE;
@@ -110,7 +121,7 @@ static void handler_async(int signo)
     }
 
     if (sig_flags & WAITING_FOR_INPUT) {
-        siglongjmp(_sigbuf, 1);
+        siglongjmp(sigbuf, 1);
     }
     // Process automatically restores mask when handler returns
     // sig_setmask(old);

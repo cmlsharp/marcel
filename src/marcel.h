@@ -1,7 +1,8 @@
 #ifndef MARCEL_H
 #define MARCEL_H
 
-#define NAME "marcel"
+extern char *program_invocation_short_name;
+#define NAME program_invocation_short_name
 #define VERSION "1.0"
 #define DEF_MODE 0666
 

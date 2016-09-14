@@ -1,5 +1,5 @@
-#ifndef M_CMD_H
-#define M_CMD_H
+#ifndef M_proc_H
+#define M_proc_H
 
 #define ARGV_INIT_SIZE 1024
 
@@ -8,32 +8,32 @@
 #include "dyn_array.h"
 
 // Struct to model a single command (process)
-typedef struct cmd {
+typedef struct proc {
     dyn_array *argv; // Arguments to be passed to execvp
     dyn_array *env; // Environment variables in the form "VAR=VALUE"
     pid_t pid; // Pid of command
     int fds[3]; // File descriptors for input, output, error
     _Bool completed; // Command has finished executing
     _Bool stopped; // Command has been stopped
-    int exit_code; // Status code cmd exited with
-    struct cmd *next; // Pointer to next piped cmd
-} cmd;
+    int exit_code; // Status code proc exited with
+    struct proc *next; // Pointer to next piped proc
+} proc;
 
-cmd *new_cmd(void);
-void free_cmd(cmd *c);
+proc *new_proc(void);
+void free_proc(proc *c);
 
 
-typedef struct cmd_io {
+typedef struct proc_io {
     char *path;
     int oflag;
-} cmd_io;
+} proc_io;
 
 typedef struct job {
     struct job *next;
     char *name; // Name of command
     size_t index; // Index in job table
-    cmd *root; // First command
-    cmd_io io[3]; // stdin, stdout and stderr
+    proc *root; // First command
+    proc_io io[3]; // stdin, stdout and stderr
     pid_t pgid; // Proc group ID for job
     _Bool notified; // User has been notified of state change
     _Bool bkg; // Job should execute in background

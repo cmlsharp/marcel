@@ -9,7 +9,7 @@
 #include <readline/readline.h> // readline, rl_complete
 #include <readline/history.h> // add_history
 
-#include "ds/cmd.h" // cmd, job etc.
+#include "ds/proc.h" // proc, job etc.
 #include "execute.h" // launch_job, initialize_builtins
 #include "jobs.h" // initialize_job_control, do_job_notification
 #include "lexer.h" // YY_BUFFER_STATE, yy_delete_buffer, yy_scan_string
@@ -18,7 +18,7 @@
 #include "signals.h" // setup_signals
 
 #define MAX_PROMPT_LEN 1024
-int exit_code = 0;
+int exit_code;
 
 static void cleanup_readline(void);
 static void gen_prompt(char *buf);
@@ -43,7 +43,7 @@ int main(void)
     char *buf = NULL;
 
     // SIGINT before first command returns here
-    while (sigsetjmp(_sigbuf, 1)) {
+    while (sigsetjmp(sigbuf, 1)) {
         cleanup_readline();
         printf("\n");
     }
@@ -59,7 +59,7 @@ int main(void)
         Assert_alloc(j->name);
 
         add_history(buf);
-        add_newline((char **) &buf);
+        add_newline(&buf);
 
         YY_BUFFER_STATE b = yy_scan_string(buf);
         if ((yyparse(j) == 0) && j->root) {
@@ -77,7 +77,7 @@ int main(void)
 
 
         // If returning from siglongjmp, cleanup readline and give new prompt
-        while (sigsetjmp(_sigbuf, 1)) {
+        while (sigsetjmp(sigbuf, 1)) {
             cleanup_readline();
             printf("\n");
         }
@@ -93,8 +93,11 @@ static void cleanup_readline(void)
 {
     rl_free_line_state();
     rl_cleanup_after_signal();
-    RL_UNSETSTATE(
-        RL_STATE_ISEARCH|RL_STATE_NSEARCH|RL_STATE_VIMOTION|RL_STATE_NUMERICARG|RL_STATE_MULTIKEY);
+    RL_UNSETSTATE( RL_STATE_ISEARCH
+                 | RL_STATE_NSEARCH
+                 | RL_STATE_VIMOTION
+                 | RL_STATE_NUMERICARG
+                 | RL_STATE_MULTIKEY);
     rl_line_buffer[rl_point = rl_end = rl_mark = 0] = 0;
 }
 

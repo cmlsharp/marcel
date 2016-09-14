@@ -8,18 +8,18 @@
 #include <sys/types.h> // pid_t
 #include <unistd.h> // close, dup, getpid, setpgid, tcsetpgrp
 
-#include "ds/cmd.h" // cmd, job
+#include "ds/proc.h" // proc, job
 #include "ds/hash_table.h" // hash_table, add_node, find_node, free_table
-#include "execute.h" // cmd_func
+#include "execute.h" // proc_func
 #include "jobs.h" // interactive, shell_term, wait_for_job, put_job_in_*...
 #include "macros.h" // Stopif, Free, Arr_len
 #include "signals.h" // reset_signals
 
 static void cleanup_builtins(void);
-static void exec_cmd(cmd const *c);
-static int m_cd(cmd const *c);
-static int m_exit(cmd const *c);
-static int m_help(cmd const *c);
+static void exec_proc(proc const *p);
+static int m_cd(proc const *p);
+static int m_exit(proc const *p);
+static int m_help(proc const *p);
 
 // Names of shell builtins
 static char const *builtin_names[] = {
@@ -29,7 +29,7 @@ static char const *builtin_names[] = {
 };
 
 // Functions associated with shell builtins
-static cmd_func const builtin_funcs[] = {
+static proc_func const builtin_funcs[] = {
     &m_cd,
     &m_exit,
     &m_help
@@ -82,7 +82,7 @@ static void fd_cleanup(int *fd_arr, size_t n)
             if (!PGID) PGID = PID;              \
             setpgid(PID, PGID);                 \
             if (!JOB->bkg)                      \
-                tcsetpgrp(shell_term, PGID);    \
+                tcsetpgrp(SHELL_TERM, PGID);    \
         }                                       \
     } while (0)
 
@@ -99,7 +99,7 @@ int launch_job(job *j)
                return M_FAILED_IO, "%s", strerror(errno));
     }
     j->root->fds[0] = io_fd[0];
-    for (cmd *crawler = j->root; crawler; crawler = crawler->next) {
+    for (proc *crawler = j->root; crawler; crawler = crawler->next) {
         if (crawler->next) {
             int fd[2];
             pipe(fd);
@@ -112,7 +112,7 @@ int launch_job(job *j)
         }
 
         char **argv = crawler->argv->data;
-        cmd_func f = find_node(argv[0], t);
+        proc_func f = find_node(argv[0], t);
 
         if (f) { // Builtin found
             crawler->exit_code = f(crawler);
@@ -124,7 +124,7 @@ int launch_job(job *j)
             if (p == 0) { // Child
                 Set_proc_group(j, p, j->pgid);
                 reset_ignored_signals();
-                exec_cmd(crawler);
+                exec_proc(crawler);
             } else { // Parent
                 Set_proc_group(j, p, j->pgid);
                 crawler->pid = p;
@@ -146,52 +146,49 @@ int launch_job(job *j)
     return 0;
 }
 
-static void exec_cmd(cmd const *c)
+static void exec_proc(proc const *p)
 {
-    char **argv = c->argv->data;
-    char **env  = c->env->data;
+    char **argv = p->argv->data;
+    char **env  = p->env->data;
 
-    for (size_t i = 0; i < c->env->num; i++) {
+    for (size_t i = 0; i < p->env->num; i++) {
         Stopif(putenv(env[i]) == -1, /* No action */,
                "Could not set the following variable/value pair: %s", env[i]);
     }
 
-    for (size_t i = 0;  i < Arr_len(c->fds); i++) {
-        dup2(c->fds[i], i);
+    for (size_t i = 0;  i < Arr_len(p->fds); i++) {
+        dup2(p->fds[i], i);
     }
 
-    Stopif(execvp(*argv, argv) == -1, exit(M_FAILED_EXEC),"%s: %s",
+    // _Exit is used because cleanup_jobs is executed when `exit` is run and we
+    // don't want to kill our other processes
+    Stopif(execvp(*argv, argv) == -1, _Exit(M_FAILED_EXEC),"%s: %s",
            strerror(errno), *argv);
 }
 
-static int m_cd(cmd const *c)
+static int m_cd(proc const *p)
 {
     // Avoid casting from void* at every use
-    char **argv = c->argv->data;
+    char **argv = p->argv->data;
     // cd to homedir if no directory specified
     char *dir = (argv[1]) ? argv[1] : getenv("HOME");
     Stopif(chdir(dir) == -1, return 1, "%s", strerror(errno));
     return 0;
 }
 
-static int m_exit(cmd const *c)
+static int m_exit(proc const *p)
 {
-    (void) c;
+    // Silence warnings about not using c
+    (void) p;
     exit(exit_code);
 }
 
-static int m_help(cmd const *c)
+static int m_help(proc const *p)
 {
-    char *help_msg = "Marcel the Shell (with shoes on) v. " VERSION "\n"
+    char help_msg[] = "Marcel the Shell (with shoes on) v. " VERSION "\n"
                      "Written by Chad Sharp\n"
                      "\n"
-                     "Features:\n"
-                     "* IO redirection (via < > and >>)\n"
-                     "* Pipes\n"
-                     "* Command history\n"
-                     "* Background jobs (via &)\n"
-                     "\n"
-                     "This shell only fights when provoked.";
-    dprintf(c->fds[1], "%s\n", help_msg);
+                     "This shell only fights when provoked.\n";
+    write(p->fds[1], help_msg, sizeof help_msg / sizeof (char));
     return 0;
 }

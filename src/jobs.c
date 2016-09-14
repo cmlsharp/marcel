@@ -9,7 +9,7 @@
 #include <termios.h> // termios, TCSADRAIN
 #include <unistd.h> // getpgid, tcgetpgrp, tcsetpgrp, getpgrp...
 
-#include "ds/cmd.h" // job, free_single_job, cmd
+#include "ds/proc.h" // job, free_single_job, proc
 #include "ds/dyn_array.h" // dyn_arrray, new_dyn_array
 #include "jobs.h" // function prototypes
 #include "signals.h" // sig_flags, WAITING_FOR_INPUT
@@ -22,23 +22,21 @@
 #define JOB_TABLE_INIT_SIZE 256
 
 _Bool interactive;
-int shell_term;
 static dyn_array *job_table;
 static pid_t shell_pgid;
 static struct termios shell_tmodes;
 
-static void cleanup_job_control(void);
+static void cleanup_jobs(void);
 
 // Put shell in forground if interactive
 // Returns true on success, false on failure
 _Bool initialize_job_control(void)
 {
     job_table = new_dyn_array(JOB_TABLE_INIT_SIZE, sizeof (job *));
-    shell_term = STDIN_FILENO;
-    interactive = isatty(shell_term);
+    interactive = isatty(SHELL_TERM);
     if (interactive) {
         // Loop until in foreground
-        while (tcgetpgrp(shell_term) != (shell_pgid = getpgrp())) {
+        while ((shell_pgid = getpgrp()) != tcgetpgrp(SHELL_TERM)) {
             kill(-shell_pgid, SIGTTIN);
         }
         // Put in own process group
@@ -47,22 +45,29 @@ _Bool initialize_job_control(void)
                "Couldn't put shell in its own process group");
 
         // Get control of terminal
-        tcsetpgrp(shell_term, shell_pgid);
+        tcsetpgrp(SHELL_TERM, shell_pgid);
         // Save default term attributes
-        tcgetattr(shell_term, &shell_tmodes);
+        tcgetattr(SHELL_TERM, &shell_tmodes);
     }
-    atexit(cleanup_job_control);
+    atexit(cleanup_jobs);
     return 1;
 }
 
-static void cleanup_job_control(void)
+static void cleanup_jobs(void)
 {
     job **jobs = job_table->data;
     for (size_t i = 0; i < job_table->num; i++) {
         if (!jobs[i]) {
             continue;
         }
-        kill(jobs[i]->pgid, SIGHUP);
+
+        // Make sure we don't commit suicide before killing our children
+        // (shouldn't happen but just in case)
+        if (jobs[i]->pgid != 0 && jobs[i]->pgid != shell_pgid) {
+            kill(jobs[i]->pgid, SIGHUP);
+        } else {
+            Err_msg("Refusing to kill job because sending signal to it would kill parent");
+        }
         free_single_job(jobs[i]);
     }
     Cleanup(job_table, free_dyn_array);
@@ -72,20 +77,20 @@ static void cleanup_job_control(void)
 void put_job_in_foreground(job *j, _Bool cont)
 {
     // Put job in foreground
-    tcsetpgrp(shell_term, j->pgid);
+    tcsetpgrp(SHELL_TERM, j->pgid);
     // Send SIGCONT if necessary
     if (cont) {
-        tcsetattr(shell_term, TCSADRAIN, &j->tmodes);
+        tcsetattr(SHELL_TERM, TCSADRAIN, &j->tmodes);
         Stopif(kill(-j->pgid, SIGCONT) < 0, /* No action */,
                "Error continuing process: %s", strerror(errno));
     }
     wait_for_job(j);
     // Put shell in foreground
-    tcsetpgrp(shell_term, shell_pgid);
+    tcsetpgrp(SHELL_TERM, shell_pgid);
 
     // Restore terminal modes
-    tcgetattr(shell_term, &j->tmodes);
-    tcsetattr(shell_term, TCSADRAIN, &shell_tmodes);
+    tcgetattr(SHELL_TERM, &j->tmodes);
+    tcsetattr(SHELL_TERM, TCSADRAIN, &shell_tmodes);
 
 }
 
@@ -98,9 +103,9 @@ void put_job_in_background(job *j, _Bool cont)
     }
 }
 
-// Find cmd that corresponds with pid and mark it as stopped or completed as
+// Find proc that corresponds with pid and mark it as stopped or completed as
 // apropriate.  Return true on success, false on failure
-_Bool mark_cmd_status(pid_t pid, int status)
+_Bool mark_proc_status(pid_t pid, int status)
 {
     if (pid > 0) {
         job **jobs = job_table->data;
@@ -108,14 +113,14 @@ _Bool mark_cmd_status(pid_t pid, int status)
             if (!jobs[i]) {
                 continue;
             }
-            for (cmd *c = jobs[i]->root; c; c = c->next) {
-                if (c->pid == pid) {
+            for (proc *p = jobs[i]->root; p; p = p->next) {
+                if (p->pid == pid) {
                     if (WIFSTOPPED(status) || WIFCONTINUED(status)) {
-                        c->stopped = !c->stopped;
+                        p->stopped = !p->stopped;
                         jobs[i]->notified = 0;
                     } else {
-                        c->exit_code = (WIFSIGNALED(status)) ? M_SIGINT : WEXITSTATUS(status);
-                        c->completed = 1;
+                        p->exit_code = (WIFSIGNALED(status)) ? M_SIGINT : WEXITSTATUS(status);
+                        p->completed = 1;
                     }
                 return 1;
                 }
@@ -139,7 +144,7 @@ void update_status(void)
     pid_t pid = 0;
     do {
         pid = waitpid(WAIT_ANY, &status, WUNTRACED | WNOHANG | WCONTINUED);
-    } while (mark_cmd_status(pid, status));
+    } while (mark_proc_status(pid, status));
 }
 
 void wait_for_job(job *j)
@@ -148,7 +153,7 @@ void wait_for_job(job *j)
     pid_t pid;
     do {
         pid = waitpid(-j->pgid, &status, WUNTRACED | WCONTINUED);
-    } while (mark_cmd_status(pid, status)
+    } while (mark_proc_status(pid, status)
              && !job_is_stopped(j)
              && !job_is_completed(j));
 
@@ -156,7 +161,7 @@ void wait_for_job(job *j)
 
 void format_job_info(job *j, char const *msg)
 {
-    fprintf(stderr, "[%zu] (%s): %s\n", j->index+1, msg, j->name);
+    fprintf(stderr, "[%zu] %d (%s): %s\n", j->index+1, j->pgid,  msg, j->name);
 }
 
 // Notify user of changes in job status, free job if completed
@@ -170,14 +175,14 @@ int do_job_notification(void)
         if (!jobs[i]) {
             continue;
         }
-        // If all cmds have completed, job is completed
+        // If all procs have completed, job is completed
         if (job_is_completed(jobs[i])) {
             // Only notify about background jobs
             if (jobs[i]->bkg) {
                 format_job_info(jobs[i], "completed");
             }
             // Get exit code from last process in
-            cmd *c;
+            proc *c;
             for (c = jobs[i]->root; c && c->next; c = c->next);
             ret = c->exit_code;
 
@@ -195,8 +200,8 @@ int do_job_notification(void)
 // Mark stopped job as running
 static void mark_job_as_running(job *j)
 {
-    for (cmd *c = j->root; c; c = c->next) {
-        c->stopped = 0;
+    for (proc *p = j->root; p; p = p->next) {
+        p->stopped = 0;
     }
 
     j->notified = 0;
@@ -215,9 +220,9 @@ void continue_job(job *j)
 // Return true if all processes in job have stopped or completed
 _Bool job_is_stopped(job *j)
 {
-    cmd *c;
-    for (c = j->root; c; c = c->next) {
-        if (!c->completed && !c->stopped) {
+    proc *p;
+    for (p = j->root; p; p = p->next) {
+        if (!p->completed && !p->stopped) {
             return 0;
         }
     }
@@ -227,9 +232,9 @@ _Bool job_is_stopped(job *j)
 // Check if all processes in job are completed
 _Bool job_is_completed(job *j)
 {
-    cmd *c;
-    for (c = j->root; c; c = c->next) {
-        if (!c->completed) {
+    proc *p;
+    for (p = j->root; p; p = p->next) {
+        if (!p->completed) {
             return 0;
         }
     }
@@ -241,11 +246,11 @@ _Bool job_is_completed(job *j)
 _Bool register_job(job *j)
 {
     if (!job_table || !job_table->data) {
-        goto fail;
+        return 0;
     }
 
     if (job_table->num + 1 >= job_table->cap && grow_dyn_array(job_table) != 0) {
-        goto fail;
+        return 0;
     }
 
     job **jobs = job_table->data;
@@ -259,6 +264,6 @@ _Bool register_job(job *j)
 
     }
 
-fail:
     return 0;
+
 }

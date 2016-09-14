@@ -1,11 +1,11 @@
 #include <stdlib.h>
 
-#include "cmd.h"
+#include "proc.h"
 #include "../macros.h"
 
-cmd *new_cmd(void)
+proc *new_proc(void)
 {
-    cmd *ret = calloc(1, sizeof *ret);
+    proc *ret = calloc(1, sizeof *ret);
     Assert_alloc(ret);
     ret->argv = new_dyn_array(ARGV_INIT_SIZE, sizeof (char*));
     ret->env = new_dyn_array(ARGV_INIT_SIZE, sizeof (char*));
@@ -16,12 +16,12 @@ cmd *new_cmd(void)
     return ret;
 }
 
-// Frees cmd and dynamically allocated members.
+// Frees proc and dynamically allocated members.
 // TODO: Make less ugly.
-void free_cmd(cmd *c)
+void free_proc(proc *p)
 {
-    while (c) {
-        dyn_array **a[] = {&c->argv, &c->env};
+    while (p) {
+        dyn_array **a[] = {&p->argv, &p->env};
         for (size_t i = 0 ; i < Arr_len(a); i++) {
             char ***strs = (char ***) &(*a[i])->data;
             for (size_t j = 0; j < (*a[i])->cap && (*strs)[j] ; j++) {
@@ -30,9 +30,9 @@ void free_cmd(cmd *c)
             free_dyn_array(*a[i]);
         }
 
-        cmd *next = c->next;
-        Free(c);
-        c = next;
+        proc *next = p->next;
+        Free(p);
+        p = next;
     }
 }
 
@@ -55,7 +55,7 @@ void free_single_job(job *j)
         Free(j->io[i].path);
     }
     Free(j->name);
-    free_cmd(j->root);
+    free_proc(j->root);
     Free(j);
 }
 
