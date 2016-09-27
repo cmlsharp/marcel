@@ -9,8 +9,6 @@ extern char *program_invocation_short_name;
 // Most recent exit code
 extern int exit_code;
 
-// Dynamically allocated array that keeps track of its size
-
 enum {
     M_SUCCESS = 0,
     M_SIGINT = -1,
