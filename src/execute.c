@@ -14,6 +14,9 @@
 #include "macros.h" // Stopif, Free, Arr_len
 #include "signals.h" // reset_signals
 
+// Default mode with which to create files
+#define FILE_MASK 0666
+
 static void cleanup_builtins(void);
 static void exec_proc(proc const *p);
 static int m_cd(proc const *p);
@@ -88,11 +91,11 @@ static void fd_cleanup(int *fd_arr, size_t n)
 // Takes a job and returns the exit status of its last process
 int launch_job(job *j)
 {
-    int io_fd[Arr_len(j->io)] = {0, 1, 2};
+    int io_fd[] = {0, 1, 2};
     // Open IO fds
     for (size_t i = 0; i < Arr_len(j->io); i++) {
         if (j->io[i].path) {
-            io_fd[i] = open(j->io[i].path, j->io[i].oflag, DEF_MODE);
+            io_fd[i] = open(j->io[i].path, j->io[i].oflag, FILE_MASK);
         }
         Stopif(io_fd[i] == -1, fd_cleanup(io_fd, i);
                return M_FAILED_IO, "%s", strerror(errno));

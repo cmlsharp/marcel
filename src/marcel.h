@@ -8,7 +8,6 @@
 extern char *program_invocation_short_name;
 #define NAME program_invocation_short_name
 #define VERSION "1.0"
-#define DEF_MODE 0666
 
 
 // Most recent exit code

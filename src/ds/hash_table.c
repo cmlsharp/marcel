@@ -98,8 +98,8 @@ void free_table(hash_table *t)
 static unsigned long get_index(char const *key, size_t size)
 {
     unsigned long hash = 5381;
-    for  (char c = *key; c; c++) {
-        hash = ((hash << 5) + hash) + c;
+    while (*key++) {
+        hash = ((hash << 5) + hash) + *key;
     }
     return hash & (size - 1);
 }
