@@ -80,28 +80,28 @@ io_mods:
 
 io_mod:
     IN real_arg {
-        Add_io_mod($2, 0, O_RDONLY);
+        Add_io_mod($2, STDIN_FILENO, O_RDONLY);
     }
     | OUT_T real_arg {
-        Add_io_mod($2, 1, P_TRUNCATE);
+        Add_io_mod($2, STDOUT_FILENO, P_TRUNCATE);
 
     }
     | OUT_ERR_T real_arg {
-        Add_io_mod($2, 1, P_TRUNCATE);
-        Add_io_mod($2, 2, P_TRUNCATE);
+        Add_io_mod($2, STDOUT_FILENO, P_TRUNCATE);
+        Add_io_mod($2, STDERR_FILENO, P_TRUNCATE);
     }
     | OUT_A real_arg {
-        Add_io_mod($2, 1, P_APPEND);
+        Add_io_mod($2, STDOUT_FILENO, P_APPEND);
     }
     | OUT_ERR_A real_arg {
-        Add_io_mod($2, 1, P_APPEND);
-        Add_io_mod($2, 2, P_APPEND);
+        Add_io_mod($2, STDOUT_FILENO, P_APPEND);
+        Add_io_mod($2, STDERR_FILENO, P_APPEND);
     }
     | ERR_A real_arg {
-        Add_io_mod($2, 2, P_APPEND);
+        Add_io_mod($2, STDERR_FILENO, P_APPEND);
     }
     | ERR_T real_arg {
-        Add_io_mod($2, 2, P_TRUNCATE);
+        Add_io_mod($2, STDERR_FILENO, P_TRUNCATE);
     }
     ;
 
@@ -150,7 +150,8 @@ int yyerror (job *w, char const *s)
 {
     (void) w;
     p_crawler = NULL;
-    Stopif(1, return 0, "%s", s);
+    Err_msg("%s", s);
+    return 0;
 }
 
 /*yydebug = 1;*/

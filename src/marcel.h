@@ -1,10 +1,15 @@
 #ifndef MARCEL_H
 #define MARCEL_H
 
+#if ! defined (__unix__) && (!(defined (__APPLE__) && defined (__MACH__)))
+#error "Marcel requires a POSIX compliant OS"
+#endif
+
 extern char *program_invocation_short_name;
 #define NAME program_invocation_short_name
 #define VERSION "1.0"
 #define DEF_MODE 0666
+
 
 // Most recent exit code
 extern int exit_code;
