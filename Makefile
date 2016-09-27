@@ -2,7 +2,7 @@
 .SECONDARY:
 
 CC = gcc
-CFLAGS = -Wall -O0 -ggdb3 -Wextra -pipe -fstack-protector -Wformat-security -std=c99 -DDEBUG
+CFLAGS = -Wall -O0 -ggdb3 -Wextra -pipe -fstack-protector -Wformat-security -std=c99 -DDEBUG -D_XOPEN_SOURCE
 EXE = marcel
 LIBS = -lreadline -lfl
 
@@ -20,7 +20,7 @@ HDRS = $(SRCS:.c=.h)
 OBJS = $(addprefix obj/,$(notdir $(SRCS:.c=.o)))
 
 define cc-command
-$(CC) $(CFLAGS) -MMD -c -o $@ $<
+$(CC) $(CFLAGS) $(DEFINES) -MMD -c -o $@ $<
 endef
 
 

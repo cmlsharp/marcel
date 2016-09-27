@@ -1,4 +1,3 @@
-#define _GNU_SOURCE // dprintf
 #include <errno.h> // errno
 #include <stdio.h> // close
 #include <stdlib.h> // calloc, exit, putenv
@@ -152,6 +151,13 @@ static void exec_proc(proc const *p)
     char **env  = p->env->data;
 
     for (size_t i = 0; i < p->env->num; i++) {
+        /* We are calling putenv here on a variable with automatic
+         * storage which is generally bad practice, HOWEVER the pointer is
+         * stored in a proc which will not be freed until the whole job is
+         * complete (i.e. all child processes have exited), so the lifetime of
+         * the string is guaranteed to be longer than the time it is being used
+         * as an environment variable.
+         */
         Stopif(putenv(env[i]) == -1, /* No action */,
                "Could not set the following variable/value pair: %s", env[i]);
     }
@@ -178,7 +184,7 @@ static int m_cd(proc const *p)
 
 static int m_exit(proc const *p)
 {
-    // Silence warnings about not using c
+    // Silence warnings about not using p
     (void) p;
     exit(exit_code);
 }

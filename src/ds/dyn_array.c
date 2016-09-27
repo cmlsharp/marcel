@@ -53,5 +53,4 @@ int grow_dyn_array(dyn_array *d)
     d->cap = new_cap;
     d->data = new_data;
     return 0;
-
 }

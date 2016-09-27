@@ -1,4 +1,3 @@
-#define _POSIX_SOURCE // kill
 #include <stdlib.h> // atexit
 #include <string.h> // strerror
 #include <errno.h> // errno
@@ -61,13 +60,12 @@ static void cleanup_jobs(void)
             continue;
         }
 
-        // Make sure we don't commit suicide before killing our children
-        // (shouldn't happen but just in case)
-        if (jobs[i]->pgid != 0 && jobs[i]->pgid != shell_pgid) {
+        if (jobs[i]->bkg) {
             kill(jobs[i]->pgid, SIGHUP);
         } else {
-            Err_msg("Refusing to kill job because sending signal to it would kill parent");
+            wait_for_job(jobs[i]);
         }
+
         free_single_job(jobs[i]);
     }
     Cleanup(job_table, free_dyn_array);

@@ -1,6 +1,5 @@
 // NOTE: Much of the below was inspired by the signal handling found in Z Shell
 // (particularly the helper functions and signal queue)
-#define _XOPEN_SOURCE
 
 #include <stdio.h>
 #include <stdint.h>
@@ -39,7 +38,7 @@ sig_atomic_t volatile queue_front, queue_back;
 sigstate volatile signal_queue[MAX_QUEUE_SIZE];
 
 // Bitmask passed to signal handler
-sig_atomic_t sig_flags;
+sig_atomic_t volatile sig_flags;
 
 __attribute__((always_inline))
 extern inline void sig_handle(int sig)
@@ -48,7 +47,6 @@ extern inline void sig_handle(int sig)
     sigemptyset(&act.sa_mask);
     act.sa_handler = handler_async;
     sigaction(sig, &act, NULL);
-
 }
 
 
@@ -56,6 +54,8 @@ __attribute__((always_inline))
 static inline sigset_t sig_block(sigset_t new)
 {
     sigset_t old;
+    // Just in case sigprocmask fails
+    sigemptyset(&old);
     sigprocmask(SIG_BLOCK, &new, &old);
     return old;
 }
@@ -65,6 +65,8 @@ __attribute__((always_inline))
 extern inline sigset_t sig_unblock(sigset_t new)
 {
     sigset_t old;
+    // Just in case sigprocmask fails
+    sigemptyset(&old);
     sigprocmask(SIG_UNBLOCK, &new, &old);
     return old;
 }
@@ -74,6 +76,8 @@ __attribute__((always_inline))
 static inline sigset_t sig_setmask(sigset_t new)
 {
     sigset_t old;
+    // Just in case sigprocmask fails
+    sigemptyset(&old);
     sigprocmask(SIG_SETMASK, &new, &old);
     return old;
 }

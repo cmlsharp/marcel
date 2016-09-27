@@ -7,7 +7,7 @@
 // This variable is only accessed via the two macros below
 extern sigjmp_buf sigbuf;
 
-extern sig_atomic_t sig_flags;
+extern sig_atomic_t volatile sig_flags;
 enum {
     WAITING_FOR_INPUT = (1 << 0), // Process was waiting for input when it recieved signal
     QUEUE_FULL = (1 << 1),

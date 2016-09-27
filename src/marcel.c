@@ -1,5 +1,3 @@
-#define _GNU_SOURCE // asprintf
-
 #include <stdio.h> // readline
 #include <stdlib.h> // calloc, getenv
 #include <string.h> // strerror, strcmp
@@ -15,15 +13,43 @@
 #include "lexer.h" // YY_BUFFER_STATE, yy_delete_buffer, yy_scan_string
 #include "macros.h" // Stopif, Free
 #include "parser.h" // yyparse
-#include "signals.h" // setup_signals
+#include "signals.h" // initialize_signal_handling, sig_flags...
 
 #define MAX_PROMPT_LEN 1024
 int exit_code;
 
-static void cleanup_readline(void);
-static void gen_prompt(char *buf);
-static char *get_input(void);
-static void add_newline(char **buf);
+static inline void prepare_for_processing(void);
+static inline void gen_prompt(char *buf);
+static inline char *get_input(void);
+static inline void add_newline(char **buf);
+
+
+// This has to ba a macro because sigsetjmp is picky about the its stack frame
+// it returns into
+// Turns on asynchronous handling for SIGCHLD and is the destination for the
+// sigsetjmp calls in the handler. When returning from longjmp, ensures
+// readline's temporary variables are cleaned up. Additionally, informs signal
+// handler that it should longjmp out
+#define prepare_for_input()                                             \
+    do {                                                                \
+        sig_handle(SIGCHLD);                                            \
+        /* siglongjmp from signal handler returns here */               \
+        while (sigsetjmp(sigbuf, 1)) {                                  \
+            /* Cleanup readline in order to get new prompt */           \
+            rl_free_line_state();                                       \
+            rl_cleanup_after_signal();                                  \
+            RL_UNSETSTATE( RL_STATE_ISEARCH                             \
+                         | RL_STATE_NSEARCH                             \
+                         | RL_STATE_VIMOTION                            \
+                         | RL_STATE_NUMERICARG                          \
+                         | RL_STATE_MULTIKEY );                         \
+            rl_line_buffer[rl_point = rl_end = rl_mark = 0] = 0;        \
+            printf("\n");                                               \
+        }                                                               \
+        run_queued_signals();                                           \
+        sig_flags |= WAITING_FOR_INPUT;                                 \
+    } while (0)
+
 
 int main(void)
 {
@@ -34,29 +60,20 @@ int main(void)
            "Could not initialize builtin commands");
     initialize_signal_handling();
 
-    rl_clear_signals();
-
     // Use tab for shell completion
     rl_bind_key('\t', rl_complete);
 
     // buffer for stdin
     char *buf = NULL;
 
-    // SIGINT before first command returns here
-    while (sigsetjmp(sigbuf, 1)) {
-        cleanup_readline();
-        printf("\n");
-    }
-    run_queued_signals();
-    sig_flags |= WAITING_FOR_INPUT;
-
+    prepare_for_input();
     while ((buf = get_input())) {
-        sig_flags &= ~WAITING_FOR_INPUT;
-        sig_default(SIGCHLD);
+        prepare_for_processing();
 
         job *j = new_job();
-        j->name = strdup(buf);
+        j->name = malloc((strlen(buf) + 1) * sizeof *j->name);
         Assert_alloc(j->name);
+        strcpy(j->name, buf);
 
         add_history(buf);
         add_newline(&buf);
@@ -69,41 +86,28 @@ int main(void)
             Cleanup(j, free_single_job);
         }
 
-        exit_code = do_job_notification();
-        sig_handle(SIGCHLD);
-
         Cleanup(b, yy_delete_buffer);
         Free(buf);
 
-
-        // If returning from siglongjmp, cleanup readline and give new prompt
-        while (sigsetjmp(sigbuf, 1)) {
-            cleanup_readline();
-            printf("\n");
-        }
-        run_queued_signals();
-        sig_flags |= WAITING_FOR_INPUT;
-
+        exit_code = do_job_notification();
+        prepare_for_input();
     }
     return exit_code;
 }
 
-// Cleanup readline in order to get a new prompt
-static void cleanup_readline(void)
+
+// For symmetry with prepare_for_input. Turns off async handling for SIGCHLD
+// and informs signal handler that it shouldn't longjmp out
+static inline void prepare_for_processing(void)
 {
-    rl_free_line_state();
-    rl_cleanup_after_signal();
-    RL_UNSETSTATE( RL_STATE_ISEARCH
-                 | RL_STATE_NSEARCH
-                 | RL_STATE_VIMOTION
-                 | RL_STATE_NUMERICARG
-                 | RL_STATE_MULTIKEY);
-    rl_line_buffer[rl_point = rl_end = rl_mark = 0] = 0;
+    sig_flags &= ~WAITING_FOR_INPUT;
+    sig_default(SIGCHLD);
 }
+
 
 // Prints prompt and returns line entered by user. Returned string must be
 // freed. Returns NULL on EOF
-static char *get_input(void)
+static inline char *get_input(void)
 {
     char prompt_buf[MAX_PROMPT_LEN] = {0};
     gen_prompt(prompt_buf);
@@ -111,7 +115,7 @@ static char *get_input(void)
 }
 
 // Creates shell prompt based on username and current directory
-static void gen_prompt(char *buf)
+static inline void gen_prompt(char *buf)
 {
     char *user = getenv("USER");
     char *dir = getcwd(NULL, 1024);
@@ -122,11 +126,12 @@ static void gen_prompt(char *buf)
 }
 
 // Grammar expects newline and readline doesn't supply it
-static void add_newline(char **buf)
+static inline void add_newline(char **buf)
 {
-    char *nbuf;
-    Assert_alloc(asprintf(&nbuf, "%s\n", *buf) != -1);
-    Free(*buf);
+    size_t len = strlen(*buf);
+    char *nbuf = realloc(*buf, (len + 2) * sizeof *nbuf);
+    Assert_alloc(nbuf);
+    nbuf[len] = '\n';
+    nbuf[len+1] = '\0';
     *buf = nbuf;
 }
-
