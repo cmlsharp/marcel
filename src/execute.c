@@ -98,7 +98,7 @@ static void fd_cleanup(int *fd_arr, size_t n)
 // assignment side effect without using pointers
 #define Set_proc_group(JOB, PID, PGID)          \
     do {                                        \
-        if (interactive) {             \
+        if (interactive) {                      \
             if (!PGID) PGID = PID;              \
             setpgid(PID, PGID);                 \
             if (!JOB->bkg)                      \

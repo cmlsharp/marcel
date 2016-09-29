@@ -70,6 +70,7 @@ _Bool initialize_job_control(void)
     return 1;
 }
 
+// Free job table and kill all background jobs
 static void cleanup_jobs(void)
 {
     job **jobs = job_table->data;
@@ -153,7 +154,7 @@ _Bool mark_proc_status(pid_t pid, int status)
     }
 }
 
-// Check for processes with statuses to report without blocking
+// Check for processes with statuses to report (without blocking)
 void update_status(void)
 {
     int status = 0;
@@ -163,6 +164,7 @@ void update_status(void)
     } while (mark_proc_status(pid, status));
 }
 
+// Check for processes with statuses to report (blocking)
 void wait_for_job(job *j)
 {
     int status;

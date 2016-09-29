@@ -35,11 +35,6 @@
 #define MAX_QUEUE_SIZE ((size_t) 1024)
 #endif
 
-#ifndef __GNUC__ 
-#define __attribute__(X)
-#endif
-
-
 typedef struct sigstate {
     int sig;
     sigset_t mask;
@@ -58,8 +53,7 @@ sigstate volatile signal_queue[MAX_QUEUE_SIZE];
 // Bitmask passed to signal handler
 sig_atomic_t volatile sig_flags;
 
-__attribute__((always_inline))
-extern inline void sig_handle(int sig)
+void sig_handle(int sig)
 {
     struct sigaction act = {0};
     sigemptyset(&act.sa_mask);
@@ -68,8 +62,7 @@ extern inline void sig_handle(int sig)
 }
 
 
-__attribute__((always_inline))
-static inline sigset_t sig_block(sigset_t new)
+static sigset_t sig_block(sigset_t new)
 {
     sigset_t old;
     // Just in case sigprocmask fails
@@ -79,8 +72,7 @@ static inline sigset_t sig_block(sigset_t new)
 }
 
 // Remove signals in `new` from signal mask and return previous signal mask
-__attribute__((always_inline))
-extern inline sigset_t sig_unblock(sigset_t new)
+sigset_t sig_unblock(sigset_t new)
 {
     sigset_t old;
     // Just in case sigprocmask fails
@@ -90,8 +82,7 @@ extern inline sigset_t sig_unblock(sigset_t new)
 }
 
 // Set signal mask, return previous signal mask
-__attribute__((always_inline))
-static inline sigset_t sig_setmask(sigset_t new)
+static sigset_t sig_setmask(sigset_t new)
 {
     sigset_t old;
     // Just in case sigprocmask fails
@@ -101,22 +92,19 @@ static inline sigset_t sig_setmask(sigset_t new)
 }
 
 // Ignore signal
-__attribute__((always_inline))
-extern inline void sig_ignore(int sig)
+void sig_ignore(int sig)
 {
     signal(sig, SIG_IGN);
 }
 
 // Reset signal handler to default action
-__attribute__((always_inline))
-extern inline void sig_default(int sig)
+void sig_default(int sig)
 {
     signal(sig, SIG_DFL);
 }
 
 // Signal queueing
-__attribute__((always_inline))
-extern inline void run_queued_signals(void)
+void run_queued_signals(void)
 {
     while (queue_front != queue_back) {
         queue_front = (queue_front + 1) % MAX_QUEUE_SIZE;
@@ -131,7 +119,7 @@ static void handler_async(int signo)
     sigfillset(&new);
     sigset_t old = sig_block(new);
 
-    int temp = ++queue_back % MAX_QUEUE_SIZE;
+    sig_atomic_t temp = ++queue_back % MAX_QUEUE_SIZE;
     if (temp != queue_front) {
         queue_back = temp;
         signal_queue[queue_back] = (sigstate) {

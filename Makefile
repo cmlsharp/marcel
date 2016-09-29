@@ -2,7 +2,7 @@
 .SECONDARY:
 
 CC = gcc
-CFLAGS = -Wall -O0 -ggdb3 -Wextra -pipe -fstack-protector -Wformat-security -std=c99 -DDEBUG -D_XOPEN_SOURCE
+CFLAGS = -Wall -O0 -ggdb3 -Wextra -pipe -fstack-protector -Wformat-security -std=c99 -D_XOPEN_SOURCE
 EXE = marcel
 LIBS = -lreadline -lfl
 
@@ -35,15 +35,15 @@ all: $(EXE)
 
 
 
-$(EXE): $(OBJS) 
+$(EXE): $(OBJS)
 	$(CC) $(CFLAGS) -o $@ $^ $(LIBS)
 
 
 
-$(OBJDIR)/%.o: $(SRCDIR)/%.c $(HDRS) 
+$(OBJDIR)/%.o: $(SRCDIR)/%.c $(HDRS) Makefile
 	$(cc-command)
 
-$(OBJDIR)/%.o: $(SRCDIR)/ds/%.c $(HDRS)
+$(OBJDIR)/%.o: $(SRCDIR)/ds/%.c $(HDRS) Makefile
 	$(cc-command)
 
 -include $(wildcard $(OBJDIR)/*.d)

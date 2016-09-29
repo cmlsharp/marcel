@@ -36,10 +36,10 @@
 #define MAX_PROMPT_LEN 1024
 int exit_code;
 
-static inline void prepare_for_processing(void);
-static inline void gen_prompt(char *buf);
-static inline char *get_input(void);
-static inline void add_newline(char **buf);
+static void prepare_for_processing(void);
+static void gen_prompt(char *buf);
+static char *get_input(void);
+static void add_newline(char **buf);
 
 
 // This has to ba a macro because sigsetjmp is picky about the its stack frame
@@ -72,11 +72,11 @@ static inline void add_newline(char **buf);
 int main(void)
 {
 
-    Stopif(!initialize_job_control(), return M_FAILED_INIT,
-           "Could not initialize job control");
     Stopif(!initialize_builtins(), return M_FAILED_INIT,
            "Could not initialize builtin commands");
     initialize_signal_handling();
+    Stopif(!initialize_job_control(), return M_FAILED_INIT,
+           "Could not initialize job control");
 
     // Use tab for shell completion
     rl_bind_key('\t', rl_complete);
@@ -116,7 +116,7 @@ int main(void)
 
 // For symmetry with prepare_for_input. Turns off async handling for SIGCHLD
 // and informs signal handler that it shouldn't longjmp out
-static inline void prepare_for_processing(void)
+static void prepare_for_processing(void)
 {
     sig_flags &= ~WAITING_FOR_INPUT;
     sig_default(SIGCHLD);
@@ -125,7 +125,7 @@ static inline void prepare_for_processing(void)
 
 // Prints prompt and returns line entered by user. Returned string must be
 // freed. Returns NULL on EOF
-static inline char *get_input(void)
+static char *get_input(void)
 {
     char prompt_buf[MAX_PROMPT_LEN] = {0};
     gen_prompt(prompt_buf);
@@ -133,7 +133,7 @@ static inline char *get_input(void)
 }
 
 // Creates shell prompt based on username and current directory
-static inline void gen_prompt(char *buf)
+static void gen_prompt(char *buf)
 {
     char *user = getenv("USER");
     char *dir = getcwd(NULL, 1024);
@@ -144,7 +144,7 @@ static inline void gen_prompt(char *buf)
 }
 
 // Grammar expects newline and readline doesn't supply it
-static inline void add_newline(char **buf)
+static void add_newline(char **buf)
 {
     size_t len = strlen(*buf);
     char *nbuf = realloc(*buf, (len + 2) * sizeof *nbuf);

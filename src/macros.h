@@ -27,7 +27,7 @@
 // Length of array. ARR cannot be a pointer
 #define Arr_len(ARR) (sizeof (ARR) / sizeof *(ARR))
 
-#ifdef DEBUG
+#ifndef NDEBUG
 #define Error_prefix "%s (%s:%d): ", NAME, __FILE__, __LINE__
 #else
 #define Error_prefix "%s: ", NAME
@@ -51,6 +51,7 @@
     } while (0)
 
 
+// Special case of Stopif for allocation errors
 #ifndef NDEBUG
 #define Assert_alloc(PTR)                                                   \
     Stopif(!(PTR),                                                          \
