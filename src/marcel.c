@@ -72,9 +72,9 @@ static void add_newline(char **buf);
 int main(void)
 {
 
+    initialize_signal_handling();
     Stopif(!initialize_builtins(), return M_FAILED_INIT,
            "Could not initialize builtin commands");
-    initialize_signal_handling();
     Stopif(!initialize_job_control(), return M_FAILED_INIT,
            "Could not initialize job control");
 
