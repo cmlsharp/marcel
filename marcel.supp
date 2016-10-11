@@ -1,0 +1,20 @@
+{
+   <readline>
+   Memcheck:Leak
+   ...
+   fun:readline
+}
+
+{
+    <yylex>
+    Memcheck:Leak
+    ...
+    fun:yy_scan_string
+}
+
+{
+    <add_history>
+    Memcheck:Leak
+    ...
+    fun:add_history
+}
