@@ -27,7 +27,7 @@
 #include <unistd.h> // getpgid, tcgetpgrp, tcsetpgrp, getpgrp...
 
 #include "ds/proc.h" // job, free_single_job, proc
-#include "ds/dyn_array.h" // dyn_arrray, new_dyn_array
+#include "ds/vec.h" // dyn_arrray, new_vec
 #include "jobs.h" // function prototypes
 #include "signals.h" // sig_flags, WAITING_FOR_INPUT
 #include "macros.h" // Cleanup, Stopif, Err_msg
@@ -39,7 +39,7 @@
 #define JOB_TABLE_INIT_SIZE 256
 
 _Bool interactive;
-static dyn_array *job_table;
+static vec job_table;
 static pid_t shell_pgid;
 static struct termios shell_tmodes;
 
@@ -49,7 +49,7 @@ static void cleanup_jobs(void);
 // Returns true on success, false on failure
 _Bool initialize_job_control(void)
 {
-    job_table = new_dyn_array(JOB_TABLE_INIT_SIZE, sizeof (job *));
+    job_table = new_vec(JOB_TABLE_INIT_SIZE, sizeof (job *));
     interactive = isatty(SHELL_TERM);
     if (interactive) {
         // Loop until in foreground
@@ -73,8 +73,8 @@ _Bool initialize_job_control(void)
 // Free job table and kill all background jobs
 static void cleanup_jobs(void)
 {
-    job **jobs = job_table->data;
-    for (size_t i = 0; i < job_table->num; i++) {
+    job **jobs = job_table.data;
+    for (size_t i = 0; i < job_table.num; i++) {
         if (!jobs[i]) {
             continue;
         }
@@ -87,7 +87,7 @@ static void cleanup_jobs(void)
 
         free_single_job(jobs[i]);
     }
-    Cleanup(job_table, free_dyn_array);
+    free_vec(&job_table);
 }
 
 // Put job in foreground, continuing if cont is true
@@ -125,19 +125,20 @@ void put_job_in_background(job *j, _Bool cont)
 _Bool mark_proc_status(pid_t pid, int status)
 {
     if (pid > 0) {
-        job **jobs = job_table->data;
-        for (size_t i = 0; i < job_table->num; i++) {
+        job **jobs = job_table.data;
+        for (size_t i = 0; i < job_table.num; i++) {
             if (!jobs[i]) {
                 continue;
             }
-            for (proc *p = jobs[i]->root; p; p = p->next) {
-                if (p->pid == pid) {
+            proc **procs = jobs[i]->procs.data;
+            for (proc **p = procs; p < procs + jobs[i]->procs.num; p++) {
+                if ((*p)->pid == pid) {
                     if (WIFSTOPPED(status) || WIFCONTINUED(status)) {
-                        p->stopped = !p->stopped;
+                        (*p)->stopped = !(*p)->stopped;
                         jobs[i]->notified = 0;
                     } else {
-                        p->exit_code = (WIFSIGNALED(status)) ? M_SIGINT : WEXITSTATUS(status);
-                        p->completed = 1;
+                        (*p)->exit_code = (WIFSIGNALED(status)) ? M_SIGINT : WEXITSTATUS(status);
+                        (*p)->completed = 1;
                     }
                 return 1;
                 }
@@ -188,8 +189,8 @@ int do_job_notification(void)
 {
     update_status();
     int ret = 0;
-    job **jobs = job_table->data;
-    for (size_t i = 0; i < job_table->num; i++) {
+    job **jobs = job_table.data;
+    for (size_t i = 0; i < job_table.num; i++) {
         if (!jobs[i]) {
             continue;
         }
@@ -200,9 +201,7 @@ int do_job_notification(void)
                 format_job_info(jobs[i], "completed");
             }
             // Get exit code from last process in
-            proc *c;
-            for (c = jobs[i]->root; c && c->next; c = c->next);
-            ret = c->exit_code;
+            ret = ((proc **) jobs[i]->procs.data)[jobs[i]->procs.num - 1]->exit_code;
 
             Cleanup(jobs[i], free_single_job);
         } else if (job_is_stopped(jobs[i]) && !jobs[i]->notified) {
@@ -218,8 +217,8 @@ int do_job_notification(void)
 // Mark stopped job as running
 static void mark_job_as_running(job *j)
 {
-    for (proc *p = j->root; p; p = p->next) {
-        p->stopped = 0;
+    for (size_t i = 0; i < j->procs.num; i++) {
+        ((proc **) j->procs.data)[i] = 0;
     }
 
     j->notified = 0;
@@ -238,9 +237,9 @@ void continue_job(job *j)
 // Return true if all processes in job have stopped or completed
 _Bool job_is_stopped(job *j)
 {
-    proc *p;
-    for (p = j->root; p; p = p->next) {
-        if (!p->completed && !p->stopped) {
+    proc **proc_list = j->procs.data;
+    for (size_t i = 0; i < j->procs.num; i++) {
+        if (!proc_list[i]->completed && !proc_list[i]->stopped) {
             return 0;
         }
     }
@@ -250,9 +249,9 @@ _Bool job_is_stopped(job *j)
 // Check if all processes in job are completed
 _Bool job_is_completed(job *j)
 {
-    proc *p;
-    for (p = j->root; p; p = p->next) {
-        if (!p->completed) {
+    proc **proc_list = j->procs.data;
+    for (size_t i = 0; i < j->procs.num; i++) {
+        if (!proc_list[i]->completed) {
             return 0;
         }
     }
@@ -263,20 +262,20 @@ _Bool job_is_completed(job *j)
 // could not be or if job table has not been initialized
 _Bool register_job(job *j)
 {
-    if (!job_table || !job_table->data) {
+    if (!job_table.data) {
         return 0;
     }
 
-    if (job_table->num + 1 >= job_table->cap && grow_dyn_array(job_table) != 0) {
+    if (job_table.num + 1 >= job_table.cap && grow_vec(&job_table) != 0) {
         return 0;
     }
 
-    job **jobs = job_table->data;
-    for (size_t i = 0; i < job_table->cap; i++) { 
+    job **jobs = job_table.data;
+    for (size_t i = 0; i < job_table.cap; i++) { 
         if (!jobs[i]) {
             jobs[i] = j;
             j->index = i;
-            job_table->num++;
+            job_table.num++;
             return 1;
         }
 

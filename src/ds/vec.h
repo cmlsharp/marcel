@@ -18,14 +18,14 @@
 
 #ifndef M_DYN_H
 #define M_DYN_H
-typedef struct dyn_array {
+typedef struct vec {
     void *data;
     size_t cap; // Allocated size
     size_t num; // Number of used indicies
     size_t size; // Size of each member of array
-} dyn_array;
+} vec;
 
-dyn_array *new_dyn_array(size_t nmemb, size_t size);
-void free_dyn_array(dyn_array *d);
-int grow_dyn_array(dyn_array *d);
+vec new_vec(size_t nmemb, size_t size);
+void free_vec(vec *v);
+int grow_vec(vec *v);
 #endif

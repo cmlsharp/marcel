@@ -23,12 +23,12 @@
 
 #include <sys/types.h>
 #include <termios.h>
-#include "dyn_array.h"
+#include "vec.h"
 
 // Struct to model a single command (process)
 typedef struct proc {
-    dyn_array *argv; // Arguments to be passed to execvp
-    dyn_array *env; // Environment variables in the form "VAR=VALUE"
+    vec argv; // Arguments to be passed to execvp
+    vec env; // Environment variables in the form "VAR=VALUE"
     pid_t pid; // Pid of command
     int fds[3]; // File descriptors for input, output, error
     _Bool completed; // Command has finished executing
@@ -50,7 +50,7 @@ typedef struct job {
     struct job *next;
     char *name; // Name of command
     size_t index; // Index in job table
-    proc *root; // First command
+    vec procs; // Dynamically allocated array of procs
     proc_io io[3]; // stdin, stdout and stderr
     pid_t pgid; // Proc group ID for job
     _Bool notified; // User has been notified of state change

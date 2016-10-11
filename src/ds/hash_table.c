@@ -26,12 +26,11 @@
 #define SIZE_MAX ((size_t) -1)
 #endif
 
-#define TABLE_GROWTH_FACTOR 2
 static unsigned long get_index(char const *key, size_t size);
 
-hash_table *new_table(size_t nmemb)
+hash_table new_table(size_t nmemb)
 {
-    return new_dyn_array(nmemb, sizeof (node *));
+    return new_vec(nmemb, sizeof (node *));
 }
 
 void delete_node(char const *k, hash_table *t)
@@ -56,11 +55,7 @@ int add_node(char const *k, void *v, hash_table *t)
     if (!t || !t->data) {
         return -1;
     }
-    if (t->num + 1 >= t->cap) {
-        if (grow_dyn_array(t) != 0) {
-            return -1;
-        }
-    }
+
     node *new = malloc(sizeof (node));
     Assert_alloc(new);
 
@@ -106,7 +101,7 @@ void free_table(hash_table *t)
             crawler = next;
         }
     }
-    free_dyn_array(t);
+    free_vec(t);
 }
 
 

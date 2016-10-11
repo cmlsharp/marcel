@@ -39,8 +39,6 @@ int exit_code;
 static void prepare_for_processing(void);
 static void gen_prompt(char *buf);
 static char *get_input(void);
-static void add_newline(char **buf);
-
 
 // This has to ba a macro because sigsetjmp is picky about the its stack frame
 // it returns into
@@ -53,15 +51,17 @@ static void add_newline(char **buf);
         sig_handle(SIGCHLD);                                            \
         /* siglongjmp from signal handler returns here */               \
         while (sigsetjmp(sigbuf, 1)) {                                  \
-            /* Cleanup readline in order to get new prompt */           \
-            rl_free_line_state();                                       \
-            rl_cleanup_after_signal();                                  \
-            RL_UNSETSTATE( RL_STATE_ISEARCH                             \
-                         | RL_STATE_NSEARCH                             \
-                         | RL_STATE_VIMOTION                            \
-                         | RL_STATE_NUMERICARG                          \
-                         | RL_STATE_MULTIKEY );                         \
-            rl_line_buffer[rl_point = rl_end = rl_mark = 0] = 0;        \
+            /*Cleanup readline in order to get new prompt*/             \
+            /*rl_free_line_state();                               */        \
+            /*rl_cleanup_after_signal();                          */        \
+            /*RL_UNSETSTATE( RL_STATE_ISEARCH                     */        \
+            /*             | RL_STATE_NSEARCH                     */        \
+            /*             | RL_STATE_VIMOTION                    */        \
+            /*             | RL_STATE_NUMERICARG                  */        \
+            /*             | RL_STATE_MULTIKEY );                 */        \
+            /*rl_line_buffer[rl_point = rl_end = rl_mark = 0] = 0;*/        \
+            int c;  \
+            while ((c = getchar()) != EOF) printf("%c",c);              \
             printf("\n");                                               \
         }                                                               \
         run_queued_signals();                                           \
@@ -72,14 +72,15 @@ static void add_newline(char **buf);
 int main(void)
 {
 
-    initialize_signal_handling();
     Stopif(!initialize_builtins(), return M_FAILED_INIT,
            "Could not initialize builtin commands");
     Stopif(!initialize_job_control(), return M_FAILED_INIT,
            "Could not initialize job control");
+    initialize_signal_handling();
 
     // Use tab for shell completion
     rl_bind_key('\t', rl_complete);
+    rl_set_signals();
 
     // buffer for stdin
     char *buf = NULL;
@@ -94,10 +95,9 @@ int main(void)
         strcpy(j->name, buf);
 
         add_history(buf);
-        add_newline(&buf);
 
         YY_BUFFER_STATE b = yy_scan_string(buf);
-        if ((yyparse(j) == 0) && j->root) {
+        if ((yyparse(j) == 0) && *((proc**) j->procs.data)) {
             register_job(j);
             launch_job(j);
         } else {
@@ -141,15 +141,4 @@ static void gen_prompt(char *buf)
     snprintf(buf, MAX_PROMPT_LEN, "%-3d [%s:%s] %c ", (unsigned char) exit_code,
              user, dir, sym);
     Free(dir);
-}
-
-// Grammar expects newline and readline doesn't supply it
-static void add_newline(char **buf)
-{
-    size_t len = strlen(*buf);
-    char *nbuf = realloc(*buf, (len + 2) * sizeof *nbuf);
-    Assert_alloc(nbuf);
-    nbuf[len] = '\n';
-    nbuf[len+1] = '\0';
-    *buf = nbuf;
 }

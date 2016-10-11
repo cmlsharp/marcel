@@ -18,7 +18,7 @@
 
 #include <stdlib.h> // calloc, realloc
 #include <string.h> // memset
-#include "dyn_array.h" // dyn_array
+#include "vec.h" // vec
 #include "../macros.h" // Assert_alloc
 
 #ifndef SIZE_MAX
@@ -27,48 +27,44 @@
 
 // Allocate array. Takes number of desired array members and the size of their
 // type
-dyn_array *new_dyn_array(size_t nmemb, size_t size)
+vec new_vec(size_t nmemb, size_t size)
 {
-    dyn_array *ret = malloc(sizeof *ret);
-    Assert_alloc(ret);
+    vec ret = {.cap = nmemb, .num = 0, .size = size};
 
-    ret->data = calloc(nmemb, size);
-    Assert_alloc(ret->data);
+    ret.data = calloc(nmemb, size);
+    Assert_alloc(ret.data);
 
-    ret->cap = nmemb;
-    ret->num = 0;
-    ret->size = size;
     return ret;
 }
 
-void free_dyn_array(dyn_array *d)
+void free_vec(vec *v)
 {
-    Free(d->data);
-    Free(d);
+    v->cap = v->num = 0;
+    Free(v->data);
 }
 
 // Returns -1 if passed bad parameters, 1 if allocation failed or array
 // capacity is already SIZE_MAX bytes. 0 on success
-int grow_dyn_array(dyn_array *d)
+int grow_vec(vec *v)
 {
-    if (!d->data || !d->cap) {
+    if (!v->data || !v->cap) {
         return -1;
     }
 
-    size_t bytes = d->cap * d->size;
+    size_t bytes = v->cap * v->size;
     if (bytes < SIZE_MAX / 2) {
         bytes *= 2;
-    } else if (bytes < (SIZE_MAX - (SIZE_MAX % d->size))) {
-        bytes  = SIZE_MAX - (SIZE_MAX % d->size);
+    } else if (bytes < (SIZE_MAX - (SIZE_MAX % v->size))) {
+        bytes  = SIZE_MAX - (SIZE_MAX % v->size);
     } else {
         return 1;
     }
-    void *new_data = realloc(d->data, bytes);
+    void *new_data = realloc(v->data, bytes);
     Assert_alloc(new_data);
     // initialize with zeros
-    size_t new_cap = bytes/d->size;
-    memset((char *)new_data + (d->size * d->cap), 0, (new_cap - d->cap) * d->size);
-    d->cap = new_cap;
-    d->data = new_data;
+    size_t new_cap = bytes/v->size;
+    memset((char *)new_data + (v->size * v->cap), 0, (new_cap - v->cap) * v->size);
+    v->cap = new_cap;
+    v->data = new_data;
     return 0;
 }

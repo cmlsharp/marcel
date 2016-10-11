@@ -20,13 +20,14 @@
 
 #include "proc.h"
 #include "../macros.h"
+#define INITIAL_PROC_CAP 4
 
 proc *new_proc(void)
 {
     proc *ret = calloc(1, sizeof *ret);
     Assert_alloc(ret);
-    ret->argv = new_dyn_array(ARGV_INIT_SIZE, sizeof (char*));
-    ret->env = new_dyn_array(ARGV_INIT_SIZE, sizeof (char*));
+    ret->argv = new_vec(ARGV_INIT_SIZE, sizeof (char*));
+    ret->env = new_vec(ARGV_INIT_SIZE, sizeof (char*));
 
     for (size_t i = 0; i < Arr_len(ret->fds); i++) {
         ret->fds[i] = i;
@@ -38,20 +39,15 @@ proc *new_proc(void)
 // TODO: Make less ugly.
 void free_proc(proc *p)
 {
-    while (p) {
-        dyn_array **a[] = {&p->argv, &p->env};
-        for (size_t i = 0 ; i < Arr_len(a); i++) {
-            char ***strs = (char ***) &(*a[i])->data;
-            for (size_t j = 0; j < (*a[i])->cap && (*strs)[j] ; j++) {
-                Free((*strs)[j]);
-            }
-            free_dyn_array(*a[i]);
+    vec *a[] = {&p->argv, &p->env};
+    for (size_t i = 0 ; i < Arr_len(a); i++) {
+        char ***strs = (char ***) &(*a[i]).data;
+        for (size_t j = 0; j < (*a[i]).cap && (*strs)[j] ; j++) {
+            Free((*strs)[j]);
         }
-
-        proc *next = p->next;
-        Free(p);
-        p = next;
+        free_vec(a[i]);
     }
+    Free(p);
 }
 
 // Allocate new job with all fields initialized to 0. Panics on allocation
@@ -60,6 +56,7 @@ job *new_job(void)
 {
     job *ret = calloc(1, sizeof *ret);
     Assert_alloc(ret);
+    ret->procs = new_vec(INITIAL_PROC_CAP, sizeof (proc*));
     return ret;
 }
 
@@ -73,7 +70,11 @@ void free_single_job(job *j)
         Free(j->io[i].path);
     }
     Free(j->name);
-    free_proc(j->root);
+    proc **procs = j->procs.data;
+    for (proc **p = procs; p < procs + j->procs.num; p++) {
+        Cleanup(*p, free_proc);
+    }
+    free_vec(&j->procs);
     Free(j);
 }
 

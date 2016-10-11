@@ -56,7 +56,7 @@ static proc_func const builtin_funcs[] = {
 };
 
 // Hash table for shell builtins
-static hash_table *t;
+static hash_table t;
 
 // Create hashtable of shell builtins
 // Returns true on success, false on failure
@@ -66,7 +66,7 @@ _Bool initialize_builtins(void)
     // NOTE: We are mixing data pointers and function pointers here. ISO C
     // forbids this but it's fine in POSIX
     for (size_t i = 0; i < Arr_len(builtin_names); i++) {
-        if (add_node(builtin_names[i], builtin_funcs[i], t) != 0) {
+        if (add_node(builtin_names[i], builtin_funcs[i], &t) != 0) {
             return 0;
         }
     }
@@ -80,7 +80,7 @@ _Bool initialize_builtins(void)
 // Wrapper around free_table so it can be passed to atexit
 static void cleanup_builtins(void)
 {
-    Cleanup(t, free_table);
+    free_table(&t);
 }
 
 static void fd_cleanup(int *fd_arr, size_t n)
@@ -118,25 +118,29 @@ int launch_job(job *j)
         Stopif(io_fd[i] == -1, fd_cleanup(io_fd, i);
                return M_FAILED_IO, "%s", strerror(errno));
     }
-    j->root->fds[0] = io_fd[0];
-    for (proc *crawler = j->root; crawler; crawler = crawler->next) {
-        if (crawler->next) {
+    proc **proc_list = j->procs.data;
+
+    // Set input fd in first process
+    proc_list[0]->fds[0] = io_fd[0];
+    // Set output/error fds in last process
+    proc_list[j->procs.num-1]->fds[1] = io_fd[1];
+    proc_list[j->procs.num-1]->fds[2] = io_fd[2];
+
+    for (size_t i = 0; i < j->procs.num; i++) {
+        // Do not create pipe for last process
+        if (i != j->procs.num-1) {
             int fd[2];
             pipe(fd);
-            crawler->fds[1] = fd[1];
-            crawler->next->fds[0] = fd[0];
-        } else {
-            // Alterations to stdout and stderr apply to last process
-            crawler->fds[1] = io_fd[1];
-            crawler->fds[2] = io_fd[2];
+            proc_list[i]->fds[1] = fd[1];
+            proc_list[i+1]->fds[0] = fd[0];
         }
 
-        char **argv = crawler->argv->data;
-        proc_func f = find_node(argv[0], t);
+        char **argv = proc_list[i]->argv.data;
+        proc_func f = find_node(argv[0], &t);
 
         if (f) { // Builtin found
-            crawler->exit_code = f(crawler);
-            crawler->completed = 1;
+            proc_list[i]->exit_code = f(proc_list[i]);
+            proc_list[i]->completed = 1;
         } else {
             pid_t p = fork();
             Stopif(p < 0, return M_FAILED_EXEC, "Could not fork process: %s",
@@ -144,14 +148,14 @@ int launch_job(job *j)
             if (p == 0) { // Child
                 Set_proc_group(j, p, j->pgid);
                 reset_ignored_signals();
-                exec_proc(crawler);
+                exec_proc(proc_list[i]);
             } else { // Parent
                 Set_proc_group(j, p, j->pgid);
-                crawler->pid = p;
+                proc_list[i]->pid = p;
             }
         }
 
-        fd_cleanup(crawler->fds, Arr_len(io_fd));
+        fd_cleanup(proc_list[i]->fds, Arr_len(io_fd));
     }
 
     if (!interactive) {
@@ -168,10 +172,10 @@ int launch_job(job *j)
 
 static void exec_proc(proc const *p)
 {
-    char **argv = p->argv->data;
-    char **env  = p->env->data;
+    char **argv = p->argv.data;
+    char **env  = p->env.data;
 
-    for (size_t i = 0; i < p->env->num; i++) {
+    for (size_t i = 0; i < p->env.num; i++) {
         /* We are calling putenv here on a variable with automatic
          * storage which is generally bad practice, HOWEVER the pointer is
          * stored in a proc which will not be freed until the whole job is
@@ -196,7 +200,7 @@ static void exec_proc(proc const *p)
 static int m_cd(proc const *p)
 {
     // Avoid casting from void* at every use
-    char **argv = p->argv->data;
+    char **argv = p->argv.data;
     // cd to homedir if no directory specified
     char *dir = (argv[1]) ? argv[1] : getenv("HOME");
     Stopif(chdir(dir) == -1, return 1, "%s", strerror(errno));
