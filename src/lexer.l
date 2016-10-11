@@ -18,7 +18,7 @@
 
 %{
 #include <string.h> // strdup
-#include <ctype.h>
+#include "macros.h" // Assert alloc
 #include "parser.h" // NL, OUT_T, OUT_A...
 
 #pragma GCC diagnostic push
@@ -28,7 +28,6 @@
 #pragma GCC diagnostic ignored "-Wint-conversion"
 char *esc_strdup(char *str);
 %}
-
 R_CHARS [ \n\t\<>\|&\\] 
 NO_R_CHARS [^ \n\t\<>\|&\\] 
 L_WORD ({NO_R_CHARS}|\\{R_CHARS})+
@@ -50,6 +49,7 @@ L_WORD ({NO_R_CHARS}|\\{R_CHARS})+
 \"[^\"]*\" |
 \'[^\']*\' {
     yylval.str = strdup(yytext + 1);
+    Assert_alloc(yylval.str);
     yylval.str[yyleng-2] = '\0';
     return WORD;
 
@@ -73,6 +73,7 @@ char *esc_strdup(char *str)
 {
     size_t len = strlen(str);
     char *ret = malloc((len+1) * sizeof *ret);
+    Assert_alloc(ret);
     _Bool prev = 0;
     for (size_t i = 0, j = 0; i < len + 1; i++) {
         if (str[i] == '\\' && prev == 0) {

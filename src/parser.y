@@ -130,7 +130,7 @@
        ;
 
     envs:
-        ASSIGN envs {
+        envs ASSIGN {
         P_add_item(env, $2); // See top of file
     }
     | { // This is reached ONLY before the first arg of each pipe 
