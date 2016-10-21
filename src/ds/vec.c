@@ -17,54 +17,92 @@
 */
 
 #include <stdlib.h> // calloc, realloc
+#include <stdint.h>
 #include <string.h> // memset
 #include "vec.h" // vec
 #include "../macros.h" // Assert_alloc
 
-#ifndef SIZE_MAX
-#define SIZE_MAX ((size_t) -1)
-#endif
+typedef struct vec_meta {
+    size_t cap;  // Allocated size in bytes
+    size_t len;  // Length of vector
+} vec_meta;
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wint-conversion"
 
 // Allocate array. Takes number of desired array members and the size of their
 // type
-vec new_vec(size_t nmemb, size_t size)
+vec valloc(size_t size)
 {
-    vec ret = {.cap = nmemb, .num = 0, .size = size};
-
-    ret.data = calloc(nmemb, size);
-    Assert_alloc(ret.data);
-
-    return ret;
+    vec_meta data = { .cap = size, .len = 0 };
+    vec ret = calloc(sizeof data + size, 1);
+    Assert_alloc(ret);
+    memcpy(ret, &data, sizeof data);
+    return ((uintptr_t) ret) + sizeof data;
 }
 
-void free_vec(vec *v)
+void vfree(vec v)
 {
-    v->cap = v->num = 0;
-    Free(v->data);
+    free((uintptr_t) v - sizeof (vec_meta));
+}
+
+size_t vcapacity(vec v) 
+{
+    return ((vec_meta *)((uintptr_t) v - sizeof (vec_meta)))->cap;
+}
+
+size_t vlen(vec v) 
+{
+    return ((vec_meta *)((uintptr_t) v - sizeof (vec_meta)))->len;
+}
+
+void vsetlen(size_t val, vec v)
+{
+    ((vec_meta *)((uintptr_t) v - sizeof (vec_meta)))->len = val;
+}
+
+int vappend(void *elem, size_t elem_size, vec *v)
+{
+    vec_meta *data = (uintptr_t) *v - sizeof *data;
+    if ((data->len + 1) * elem_size >= data->cap) {
+        if (vgrow(v) != 0) {
+            return 1;
+        }
+        // Reinitialize data in case realloc changed the memory location
+        data = (uintptr_t) *v - sizeof *data;
+    }
+    memcpy((uintptr_t) *v + data->len * elem_size, elem, elem_size);
+    data->len++;
+    return 0;
 }
 
 // Returns -1 if passed bad parameters, 1 if allocation failed or array
 // capacity is already SIZE_MAX bytes. 0 on success
-int grow_vec(vec *v)
+int vgrow(vec *v)
 {
-    if (!v->data || !v->cap) {
+    if (!v || !*v) {
         return -1;
     }
-
-    size_t bytes = v->cap * v->size;
+    
+    vec ret = (uintptr_t) *v - sizeof (vec_meta);
+    size_t bytes = ((vec_meta*) ret)->cap;
     if (bytes < SIZE_MAX / 2) {
         bytes *= 2;
-    } else if (bytes < (SIZE_MAX - (SIZE_MAX % v->size))) {
-        bytes  = SIZE_MAX - (SIZE_MAX % v->size);
+    } else if (bytes < SIZE_MAX) {
+        bytes = SIZE_MAX;
     } else {
         return 1;
     }
-    void *new_data = realloc(v->data, bytes);
-    Assert_alloc(new_data);
-    // initialize with zeros
-    size_t new_cap = bytes/v->size;
-    memset((char *)new_data + (v->size * v->cap), 0, (new_cap - v->cap) * v->size);
-    v->cap = new_cap;
-    v->data = new_data;
+    ret = realloc(ret, sizeof (vec_meta) + bytes); 
+    if (!ret) {
+        return 1;
+    }
+
+    size_t *cap = &((vec_meta*) ret)->cap;
+    memset(sizeof (vec_meta) + (uintptr_t) ret + *cap , 0, bytes - *cap);
+    *cap = bytes;
+    *v = (uintptr_t) ret + sizeof (vec_meta);
     return 0;
 }
+#pragma GCC diagnostic pop
+#pragma GCC diagnostic pop

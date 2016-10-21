@@ -23,132 +23,137 @@
 #include <fcntl.h> // read, write, O_*
 #include <unistd.h> // pipe
 
+#include "execute.h" // builtin, lookup_table
 #include "ds/proc.h" // proc, job
+#include "ds/vec.h" // vappend
 #include "lexer.h" // yylex (in bison generated code)
 #include "macros.h" // Stopif, Free
 
 #define P_TRUNCATE (O_WRONLY | O_TRUNC | O_CREAT)
 #define P_APPEND (O_WRONLY | O_APPEND | O_CREAT)
-
-#define P_LAST (((proc **) p_job->procs.data)[p_job->procs.num-1])
+#define P_LAST (p_job->procs[vlen(p_job->procs)-1])
 
 // I hate to use a macro for this but the lack of code duplication is worth it
-#define P_add_item(STRUCT, ENTRY)                                                                   \
+#define Add_io_mod(PATH, FD, OFLAG)                                                                 \
     do {                                                                                            \
-        if (P_LAST->STRUCT.num == P_LAST->STRUCT.cap - 1) {                                 \
-            Assert_alloc(grow_vec(&P_LAST->STRUCT) == 0);                                         \
+        if (!p_job->io[FD].path) {                                                                  \
+            p_job->io[FD] = (proc_io) {.path = PATH, .oflag = OFLAG};                               \
+        } else {                                                                                    \
+            Err_msg("Taking/sending IO to/from more than one source not supported. "                \
+                    "Skipping \"%s\"", PATH);                                                       \
+            Free(PATH);                                                                             \
         }                                                                                           \
-            ((char **) P_LAST->STRUCT.data)[P_LAST->STRUCT.num++] = ENTRY;                      \
-        } while(0)
+    } while (0)
 
-    // See above
-    #define Add_io_mod(PATH, FD, OFLAG)                                                                 \
-        do {                                                                                            \
-            if (!p_job->io[FD].path) {                                                                  \
-                p_job->io[FD] = (proc_io) {.path = PATH, .oflag = OFLAG};                               \
-            } else {                                                                                    \
-                Err_msg("Taking/sending IO to/from more than one source not supported. "                \
-                        "Skipping \"%s\"", PATH);                                                       \
-                Free(PATH);                                                                             \
-            }                                                                                           \
-        } while (0)
+int yyerror (job *w, char const *s);
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wincompatible-pointer-types"
 
-    int yyerror (job *w, char const *s);
+%}
 
-    %}
+// Include marcel.h in .c file as well as header
+%code requires {
+    #include "ds/proc.h"
+}
 
-    // Include marcel.h in .c file as well as header
-    %code requires {
-        #include "ds/proc.h"
+%union {
+    char *str;
+}
+
+%token <str> WORD ASSIGN 
+%token OUT_T OUT_ERR_T OUT_A OUT_ERR_A ERR_T ERR_A IN 
+%token NL PIPE BKG
+
+%type <str> real_arg
+
+%define parse.error verbose
+%parse-param {job *p_job}
+
+%%
+
+/*full_line:*/
+    /*envs pipes_line {*/
+        /*// Process has variables set but no command, meaning that its just an assigment*/
+        /*if (!p_job->procs[0]->argv[0]) {*/
+            /*size_t env_len = vlen(p_job->procs[0]->env);*/
+            /*for (size_t i = 0; i < env_len; i++) {*/
+                /*builtin *b = malloc(sizeof *b);*/
+                /*Assert_alloc(b);*/
+                /*b->type = VAR;*/
+                /*b->var =  p_job->procs[0]->env[i] + strlen(p_job->procs[0]->env[i]) + 1;*/
+                /*add_node(p_job->procs[0]->env[i], b, lookup_table);*/
+                /*Err_msg("Warning: accessing local variables unimplemented");*/
+            /*}*/
+        /*}*/
+    /*}*/
+    /*;*/
+
+pipes_line:
+    pipes io_mods bkg {p_job->valid = 1;}
+    | 
+    ;
+
+bkg:
+    BKG {
+        p_job->bkg = 1;
     }
+    | 
+    ;
 
-    %union {
-        char *str;
+io_mods:
+    io_mods io_mod
+    | 
+    ;
+
+io_mod:
+    IN real_arg {
+        Add_io_mod($2, STDIN_FILENO, O_RDONLY);
     }
-
-    %token <str> WORD ASSIGN 
-    %token OUT_T OUT_ERR_T OUT_A OUT_ERR_A ERR_T ERR_A IN 
-    %token NL PIPE BKG
-
-    %type <str> real_arg
-
-    %define parse.error verbose
-    %parse-param {job *p_job}
-
-    %%
-
-    cmd_line:
-        pipes io_mods bkg 
-        |
-        ;
-
-    bkg:
-        BKG {
-            p_job->bkg = 1;
-        }
-        | 
-        ;
-
-    io_mods:
-        io_mods io_mod
-        | 
-        ;
-
-    io_mod:
-        IN real_arg {
-            Add_io_mod($2, STDIN_FILENO, O_RDONLY);
-        }
-        | OUT_T real_arg {
-            Add_io_mod($2, STDOUT_FILENO, P_TRUNCATE); 
-        }
-        | OUT_ERR_T real_arg {
-            Add_io_mod($2, STDOUT_FILENO, P_TRUNCATE);
-            Add_io_mod($2, STDERR_FILENO, P_TRUNCATE);
-        }
-        | OUT_A real_arg {
-            Add_io_mod($2, STDOUT_FILENO, P_APPEND);
-        }
-        | OUT_ERR_A real_arg {
-            Add_io_mod($2, STDOUT_FILENO, P_APPEND);
-            Add_io_mod($2, STDERR_FILENO, P_APPEND);
-        }
-        | ERR_A real_arg {
-            Add_io_mod($2, STDERR_FILENO, P_APPEND);
-        }
-        | ERR_T real_arg {
-            Add_io_mod($2, STDERR_FILENO, P_TRUNCATE);
-        }
-        ;
-
-    pipes:
-        pipes PIPE cmd
-        | cmd
-        ;
-
-    cmd:
-       envs WORD args {((char **) P_LAST->argv.data)[0] = $2;}
-       ;
-
-    envs:
-        envs ASSIGN {
-        P_add_item(env, $2); // See top of file
+    | OUT_T real_arg {
+        Add_io_mod($2, STDOUT_FILENO, P_TRUNCATE); 
     }
-    | { // This is reached ONLY before the first arg of each pipe 
-        // E.g. the command:  VAR=VAL a b | c d | VAR2=VAL2 e f
+    | OUT_ERR_T real_arg {
+        Add_io_mod($2, STDOUT_FILENO, P_TRUNCATE);
+        Add_io_mod($2, STDERR_FILENO, P_TRUNCATE);
+    }
+    | OUT_A real_arg {
+        Add_io_mod($2, STDOUT_FILENO, P_APPEND);
+    }
+    | OUT_ERR_A real_arg {
+        Add_io_mod($2, STDOUT_FILENO, P_APPEND);
+        Add_io_mod($2, STDERR_FILENO, P_APPEND);
+    }
+    | ERR_A real_arg {
+        Add_io_mod($2, STDERR_FILENO, P_APPEND);
+    }
+    | ERR_T real_arg {
+        Add_io_mod($2, STDERR_FILENO, P_TRUNCATE);
+    }
+    ;
+
+pipes:
+    pipes PIPE cmd
+    | cmd
+    ;
+
+cmd:
+   envs WORD args {P_LAST->argv[0] = $2;}
+   ;
+
+envs:
+    envs ASSIGN {vappend(&($2), sizeof (char*), &(P_LAST->env));}
+    | { // this is reached only before the first arg of each pipe 
+        // e.g. the command:  var=val a b | c d | var2=val2 e f
         //                   ^             ^     ^    <-- reached in those places
-        if (p_job->procs.num >= p_job->procs.cap) {
-            grow_vec(&p_job->procs);
-        }
-        ((proc**) p_job->procs.data)[p_job->procs.num] = new_proc();
-        p_job->procs.num++;
-        P_LAST->argv.num = 1;
+        proc *p = new_proc();
+        vappend(&p, sizeof (proc *), &(p_job->procs));
+        char *null = NULL;
+        vappend(&null, sizeof (char *), &(P_LAST->argv));
     }
     ;
 
 args:
-    args real_arg {
-        P_add_item(argv, $2); // See top of file
-    }
+    args real_arg {vappend(&($2), sizeof (char*), &(P_LAST->argv));}
     | {}
     ;
 
@@ -157,12 +162,13 @@ real_arg: WORD {$$ = $1;} | ASSIGN {$$ = $1;}
 
 %%
 
-
 int yyerror (job *w, char const *s)
 {
     (void) w;
     Err_msg("%s", s);
     return 0;
 }
+#pragma GCC diagnostic pop
+#pragma GCC diagnostic pop
 
 /*yydebug = 1;*/

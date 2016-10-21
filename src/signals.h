@@ -29,6 +29,7 @@ extern sig_atomic_t volatile sig_flags;
 enum {
     WAITING_FOR_INPUT = (1 << 0), // Process was waiting for input when it recieved signal
     QUEUE_FULL = (1 << 1),
+    NO_RESTORE = (1 << 2), // Don't restore readline prompt when jumping
     // To be continued...
 };
 
@@ -36,5 +37,7 @@ void initialize_signal_handling(void);
 void reset_ignored_signals(void);
 void sig_default(int sig);
 void sig_handle(int sig);
+sigset_t sig_block(sigset_t old);
+sigset_t sig_setmask(sigset_t old);
 void run_queued_signals(void);
 #endif

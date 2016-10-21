@@ -27,8 +27,8 @@
 
 // Struct to model a single command (process)
 typedef struct proc {
-    vec argv; // Arguments to be passed to execvp
-    vec env; // Environment variables in the form "VAR=VALUE"
+    char **argv; // Vec of arguments to be passed to execvp
+    char **env; // Vec of environment variables in the form "VAR=VALUE"
     pid_t pid; // Pid of command
     int fds[3]; // File descriptors for input, output, error
     _Bool completed; // Command has finished executing
@@ -50,11 +50,14 @@ typedef struct job {
     struct job *next;
     char *name; // Name of command
     size_t index; // Index in job table
-    vec procs; // Dynamically allocated array of procs
+    proc **procs; // Vec of procs
     proc_io io[3]; // stdin, stdout and stderr
     pid_t pgid; // Proc group ID for job
-    _Bool notified; // User has been notified of state change
-    _Bool bkg; // Job should execute in background
+    struct {
+        _Bool notified  : 1; // User has been notified of state change
+        _Bool bkg       : 1; // Job should execute in background
+        _Bool valid     : 1; // Should job be sent to launch_job
+    };
     struct termios tmodes; // Terminal modes for job
 } job;
 

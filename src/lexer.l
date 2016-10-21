@@ -57,6 +57,7 @@ L_WORD ({NO_R_CHARS}|\\{R_CHARS})+
 
 [a-zA-Z_]+={L_WORD} {
    yylval.str = esc_strdup(yytext);
+   *strchr(yylval.str, '=') = '\0';
    return ASSIGN;
 
 }

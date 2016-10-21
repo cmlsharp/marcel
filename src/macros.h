@@ -34,11 +34,11 @@
 #endif
 
 // Standard way to print error messages across program
-#define Err_msg(...)                                                    \
-    do {                                                                \
-        fprintf(stderr, Error_prefix);                                  \
-        fprintf(stderr, __VA_ARGS__);                                   \
-        fprintf(stderr, "\n");                                          \
+#define Err_msg(...)                                                        \
+    do {                                                                    \
+        fprintf(stderr, Error_prefix);                                      \
+        fprintf(stderr, __VA_ARGS__);                                       \
+        fprintf(stderr, "\n");                                              \
     } while (0)
 
 // Make error handling easier

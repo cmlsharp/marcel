@@ -26,8 +26,8 @@ proc *new_proc(void)
 {
     proc *ret = calloc(1, sizeof *ret);
     Assert_alloc(ret);
-    ret->argv = new_vec(ARGV_INIT_SIZE, sizeof (char*));
-    ret->env = new_vec(ARGV_INIT_SIZE, sizeof (char*));
+    ret->argv = valloc(ARGV_INIT_SIZE * sizeof *ret->argv);
+    ret->env =  valloc(ARGV_INIT_SIZE * sizeof *ret->env);
 
     for (size_t i = 0; i < Arr_len(ret->fds); i++) {
         ret->fds[i] = i;
@@ -39,13 +39,13 @@ proc *new_proc(void)
 // TODO: Make less ugly.
 void free_proc(proc *p)
 {
-    vec *a[] = {&p->argv, &p->env};
+    char ***a[] = {&p->argv, &p->env};
     for (size_t i = 0 ; i < Arr_len(a); i++) {
-        char ***strs = (char ***) &(*a[i]).data;
-        for (size_t j = 0; j < (*a[i]).cap && (*strs)[j] ; j++) {
-            Free((*strs)[j]);
+        size_t len = vlen(*a[i]);
+        for (size_t j = 0; j < len; j++) {
+            Free((*a[i])[j]);
         }
-        free_vec(a[i]);
+        vfree(*a[i]);
     }
     Free(p);
 }
@@ -56,7 +56,7 @@ job *new_job(void)
 {
     job *ret = calloc(1, sizeof *ret);
     Assert_alloc(ret);
-    ret->procs = new_vec(INITIAL_PROC_CAP, sizeof (proc*));
+    ret->procs = valloc(INITIAL_PROC_CAP * sizeof *ret->procs);
     return ret;
 }
 
@@ -70,11 +70,11 @@ void free_single_job(job *j)
         Free(j->io[i].path);
     }
     Free(j->name);
-    proc **procs = j->procs.data;
-    for (proc **p = procs; p < procs + j->procs.num; p++) {
-        Cleanup(*p, free_proc);
+    size_t proc_len = vlen(j->procs);
+    for (size_t i = 0; i < proc_len; i++) {
+        Cleanup(j->procs[i], free_proc);
     }
-    free_vec(&j->procs);
+    vfree(j->procs);
     Free(j);
 }
 

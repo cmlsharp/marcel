@@ -62,7 +62,7 @@ void sig_handle(int sig)
 }
 
 
-static sigset_t sig_block(sigset_t new)
+sigset_t sig_block(sigset_t new)
 {
     sigset_t old;
     // Just in case sigprocmask fails
@@ -82,7 +82,7 @@ sigset_t sig_unblock(sigset_t new)
 }
 
 // Set signal mask, return previous signal mask
-static sigset_t sig_setmask(sigset_t new)
+sigset_t sig_setmask(sigset_t new)
 {
     sigset_t old;
     // Just in case sigprocmask fails
@@ -131,6 +131,9 @@ static void handler_async(int signo)
     }
 
     if (sig_flags & WAITING_FOR_INPUT) {
+        if (signo == SIGINT) {
+            sig_flags |= NO_RESTORE;
+        }
         siglongjmp(sigbuf, 1);
     }
     // Process automatically restores mask when handler returns

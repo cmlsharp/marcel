@@ -27,15 +27,15 @@
 typedef struct node {
     void *value; // Pointer to builtin function (or alias)
     char const* key; // Name of function (or alias)
-    struct node *next; // Pointer to next node (in case of conflicts
+    struct node *next; // Pointer to next node (in case of conflicts)
 } node;
 
-typedef vec hash_table;
+typedef node** hash_table;
 
 hash_table new_table(size_t size);
-int add_node(char const *k, void *v, hash_table *t);
-void *find_node(char const *k, hash_table const *t);
-void delete_node(char const *k, hash_table *t);
-void free_table(hash_table *t);
+int add_node(char const *k, void *v, hash_table t);
+void *find_node(char const *k, _Bool (*filter)(void *), hash_table t);
+void delete_node(char const *k, hash_table t);
+void free_table(hash_table t, void (*destructor)(node*));
 
 #endif

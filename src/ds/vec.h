@@ -16,16 +16,16 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef M_DYN_H
-#define M_DYN_H
-typedef struct vec {
-    void *data;
-    size_t cap; // Allocated size
-    size_t num; // Number of used indicies
-    size_t size; // Size of each member of array
-} vec;
+#ifndef M_VEC_H
+#define M_VEC_H
 
-vec new_vec(size_t nmemb, size_t size);
-void free_vec(vec *v);
-int grow_vec(vec *v);
+typedef void* vec;
+
+vec valloc(size_t size);
+void vfree(vec v);
+size_t vcapacity(vec v);
+size_t vlen(vec v);
+void vsetlen(size_t val, vec v);
+int vappend(void *elem, size_t elem_size, vec *v);
+int vgrow(vec *v);
 #endif

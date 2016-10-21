@@ -36,6 +36,9 @@
 #define MAX_PROMPT_LEN 1024
 int exit_code;
 
+static char *saved_line;
+static int saved_point;
+static int restore_buffer(void);
 static void prepare_for_processing(void);
 static void gen_prompt(char *buf);
 static char *get_input(void);
@@ -51,23 +54,20 @@ static char *get_input(void);
         sig_handle(SIGCHLD);                                            \
         /* siglongjmp from signal handler returns here */               \
         while (sigsetjmp(sigbuf, 1)) {                                  \
-            /*Cleanup readline in order to get new prompt*/             \
-            /*rl_free_line_state();                               */        \
-            /*rl_cleanup_after_signal();                          */        \
-            /*RL_UNSETSTATE( RL_STATE_ISEARCH                     */        \
-            /*             | RL_STATE_NSEARCH                     */        \
-            /*             | RL_STATE_VIMOTION                    */        \
-            /*             | RL_STATE_NUMERICARG                  */        \
-            /*             | RL_STATE_MULTIKEY );                 */        \
-            /*rl_line_buffer[rl_point = rl_end = rl_mark = 0] = 0;*/        \
-            int c;  \
-            while ((c = getchar()) != EOF) printf("%c",c);              \
+            sig_flags &= ~WAITING_FOR_INPUT;                            \
+            if (!(sig_flags & NO_RESTORE)) {                            \
+                saved_line  = rl_copy_text(0, rl_end);                  \
+                saved_point = rl_point;                                 \
+                rl_pre_input_hook = restore_buffer;                     \
+                rl_replace_line("",0);                                  \
+                rl_redisplay();                                         \
+            }                                                           \
             printf("\n");                                               \
+            sig_flags &= ~NO_RESTORE;                                   \
         }                                                               \
         run_queued_signals();                                           \
         sig_flags |= WAITING_FOR_INPUT;                                 \
     } while (0)
-
 
 int main(void)
 {
@@ -97,7 +97,7 @@ int main(void)
         add_history(buf);
 
         YY_BUFFER_STATE b = yy_scan_string(buf);
-        if ((yyparse(j) == 0) && *((proc**) j->procs.data)) {
+        if ((yyparse(j) == 0) && j->valid) {
             register_job(j);
             launch_job(j);
         } else {
@@ -141,4 +141,21 @@ static void gen_prompt(char *buf)
     snprintf(buf, MAX_PROMPT_LEN, "%-3d [%s:%s] %c ", (unsigned char) exit_code,
              user, dir, sym);
     Free(dir);
+}
+
+static int restore_buffer(void)
+{
+    // Temporarily block signals;
+    sigset_t new;
+    sigfillset(&new);
+    sigset_t old = sig_block(new);
+    rl_replace_line(saved_line, 0);
+    rl_point = saved_point;
+    rl_redisplay();
+    saved_point = 0;
+    Free(saved_line);
+    rl_pre_input_hook = NULL;
+    // Restore signal mask
+    sig_setmask(old);
+    return 0;
 }

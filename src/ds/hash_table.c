@@ -30,13 +30,13 @@ static unsigned long get_index(char const *key, size_t size);
 
 hash_table new_table(size_t nmemb)
 {
-    return new_vec(nmemb, sizeof (node *));
+    hash_table ret = valloc(nmemb * sizeof *ret);
+    return ret;
 }
 
-void delete_node(char const *k, hash_table *t)
+void delete_node(char const *k, hash_table t)
 {
-    node **nodes = (node **)t->data;
-    node *crawler = nodes[get_index(k, t->cap)];
+    node *crawler = t[get_index(k, vcapacity(t) / sizeof *t)];
     node *prev = NULL;
     while (crawler) {
         if (strcmp(k, crawler->key) == 0) {
@@ -44,15 +44,14 @@ void delete_node(char const *k, hash_table *t)
                 prev->next = crawler->next;
             }
             Free(crawler);
-            t->num--;
             return;
         }
     }
 }
 
-int add_node(char const *k, void *v, hash_table *t)
+int add_node(char const *k, void *v, hash_table t)
 {
-    if (!t || !t->data) {
+    if (!t) {
         return -1;
     }
 
@@ -61,47 +60,52 @@ int add_node(char const *k, void *v, hash_table *t)
 
     new->key = k;
     new->value = v;
-    unsigned long i = get_index(k, t->cap);
-    node **nodes = (node **) t->data;
-    new->next = nodes[i];
+    unsigned long i = get_index(k, vcapacity(t) / sizeof *t);
+    new->next = t[i];
 
-    nodes[i] = new;
-    t->num++;
+    t[i] = new;
     return 0;
 }
 
-void *find_node(char const *k, hash_table const *t)
+void *find_node(char const *k, _Bool (*filter)(void *), hash_table t)
 {
-    if (!t || !t->data) {
+    if (!t) {
         return NULL;
     }
-    node **nodes = (node **) t->data;
-    node *crawler = nodes[get_index(k, t->cap)];
+    node *crawler = t[get_index(k, vcapacity(t) / sizeof *t)];
     while (crawler) {
         if (strcmp(crawler->key, k) == 0) {
-            return crawler->value;
+            _Bool end = filter ? filter(crawler->value) : 1;
+            if (end) {
+                return crawler->value;
+            } else {
+                continue;
+            }
         }
         crawler = crawler->next;
     }
     return NULL;
 }
 
-void free_table(hash_table *t)
+void free_table(hash_table t, void (*destructor)(node *))
 {
     if (!t) {
         return;
     }
+    size_t table_cap = vcapacity(t) / sizeof *t;
     // Free contents
-    node **nodes = (node **) t->data;
-    for (size_t i = 0; i < t->cap; i++) {
-        node *crawler = nodes[i];
+    for (size_t i = 0; i < table_cap; i++) {
+        node *crawler = t[i];
         while (crawler) {
+            if (destructor) {
+                destructor(crawler);
+            }
             node *next = crawler->next;
             Free(crawler);
             crawler = next;
         }
     }
-    free_vec(t);
+    vfree(t);
 }
 
 

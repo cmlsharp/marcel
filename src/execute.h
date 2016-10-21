@@ -19,6 +19,7 @@
 #ifndef MARCEL_EXEC_H
 #define MARCEL_EXEC_H
 
+#include "ds/hash_table.h"
 #include "ds/proc.h" // proc
 
 // Builtin function
@@ -27,5 +28,21 @@ typedef int (*proc_func)(proc const*);
 int launch_job(job *j);
 _Bool initialize_builtins(void);
 
+
+// Tagged pointers would be a nice optimization but they don't seemt to work with function pointers
+typedef struct builtin {
+    union {
+        proc_func cmd;
+        char *var;
+    };
+    int type;
+} builtin;
+
+enum {
+    CMD,
+    VAR,
+};
+
+extern hash_table lookup_table;
 
 #endif

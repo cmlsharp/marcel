@@ -56,17 +56,21 @@ static proc_func const builtin_funcs[] = {
 };
 
 // Hash table for shell builtins
-static hash_table t;
+hash_table lookup_table;
 
 // Create hashtable of shell builtins
 // Returns true on success, false on failure
 _Bool initialize_builtins(void)
 {
-    t = new_table(TABLE_INIT_SIZE);
+    lookup_table = new_table(TABLE_INIT_SIZE);
     // NOTE: We are mixing data pointers and function pointers here. ISO C
     // forbids this but it's fine in POSIX
     for (size_t i = 0; i < Arr_len(builtin_names); i++) {
-        if (add_node(builtin_names[i], builtin_funcs[i], &t) != 0) {
+        builtin *b = malloc(sizeof *b);
+        Assert_alloc(b);
+        b->type=CMD;
+        b->cmd = builtin_funcs[i];
+        if (add_node(builtin_names[i], b, lookup_table) != 0) {
             return 0;
         }
     }
@@ -77,10 +81,14 @@ _Bool initialize_builtins(void)
     return 1;
 }
 
+static inline void builtin_destructor(node *n) {
+    free(n->value);
+}
+
 // Wrapper around free_table so it can be passed to atexit
 static void cleanup_builtins(void)
 {
-    free_table(&t);
+    free_table(lookup_table, builtin_destructor);
 }
 
 static void fd_cleanup(int *fd_arr, size_t n)
@@ -106,6 +114,11 @@ static void fd_cleanup(int *fd_arr, size_t n)
         }                                       \
     } while (0)
 
+static inline _Bool filter_command(void *val) {
+    builtin *b = val;
+    return b->type == CMD;
+}
+
 // Takes a job and returns the exit status of its last process
 int launch_job(job *j)
 {
@@ -118,29 +131,29 @@ int launch_job(job *j)
         Stopif(io_fd[i] == -1, fd_cleanup(io_fd, i);
                return M_FAILED_IO, "%s", strerror(errno));
     }
-    proc **proc_list = j->procs.data;
+    size_t proc_len = vlen(j->procs);
 
     // Set input fd in first process
-    proc_list[0]->fds[0] = io_fd[0];
+    j->procs[0]->fds[0] = io_fd[0];
     // Set output/error fds in last process
-    proc_list[j->procs.num-1]->fds[1] = io_fd[1];
-    proc_list[j->procs.num-1]->fds[2] = io_fd[2];
+    j->procs[proc_len-1]->fds[1] = io_fd[1];
+    j->procs[proc_len-1]->fds[2] = io_fd[2];
 
-    for (size_t i = 0; i < j->procs.num; i++) {
+    for (size_t i = 0; i < proc_len; i++) {
         // Do not create pipe for last process
-        if (i != j->procs.num-1) {
+        if (i != proc_len-1) {
             int fd[2];
             pipe(fd);
-            proc_list[i]->fds[1] = fd[1];
-            proc_list[i+1]->fds[0] = fd[0];
+            j->procs[i]->fds[1] = fd[1];
+            j->procs[i+1]->fds[0] = fd[0];
         }
 
-        char **argv = proc_list[i]->argv.data;
-        proc_func f = find_node(argv[0], &t);
+        builtin *b = find_node(j->procs[i]->argv[0],filter_command, lookup_table);
+        proc_func f = b ? b->cmd : NULL;
 
         if (f) { // Builtin found
-            proc_list[i]->exit_code = f(proc_list[i]);
-            proc_list[i]->completed = 1;
+            j->procs[i]->exit_code = f(j->procs[i]);
+            j->procs[i]->completed = 1;
         } else {
             pid_t p = fork();
             Stopif(p < 0, return M_FAILED_EXEC, "Could not fork process: %s",
@@ -148,14 +161,14 @@ int launch_job(job *j)
             if (p == 0) { // Child
                 Set_proc_group(j, p, j->pgid);
                 reset_ignored_signals();
-                exec_proc(proc_list[i]);
+                exec_proc(j->procs[i]);
             } else { // Parent
                 Set_proc_group(j, p, j->pgid);
-                proc_list[i]->pid = p;
+                j->procs[i]->pid = p;
             }
         }
 
-        fd_cleanup(proc_list[i]->fds, Arr_len(io_fd));
+        fd_cleanup(j->procs[i]->fds, Arr_len(io_fd));
     }
 
     if (!interactive) {
@@ -170,21 +183,15 @@ int launch_job(job *j)
     return 0;
 }
 
+
 static void exec_proc(proc const *p)
 {
-    char **argv = p->argv.data;
-    char **env  = p->env.data;
-
-    for (size_t i = 0; i < p->env.num; i++) {
-        /* We are calling putenv here on a variable with automatic
-         * storage which is generally bad practice, HOWEVER the pointer is
-         * stored in a proc which will not be freed until the whole job is
-         * complete (i.e. all child processes have exited), so the lifetime of
-         * the string is guaranteed to be longer than the time it is being used
-         * as an environment variable.
-         */
-        Stopif(putenv(env[i]) == -1, /* No action */,
-               "Could not set the following variable/value pair: %s", env[i]);
+    size_t env_len  = vlen(p->env);
+    for (size_t i = 0; i < env_len; i++) {
+        char *value = p->env[i] + strlen(p->env[i]) + 1;
+        unsetenv(p->env[i]);
+        Stopif(setenv(p->env[i], value, 1) == -1, /* No action */,
+               "Could not set the following variable %s to %s", p->env[i], value);
     }
 
     for (size_t i = 0;  i < Arr_len(p->fds); i++) {
@@ -193,16 +200,14 @@ static void exec_proc(proc const *p)
 
     // _Exit is used because cleanup_jobs is executed when `exit` is run and we
     // don't want to kill our other processes
-    Stopif(execvp(*argv, argv) == -1, _Exit(M_FAILED_EXEC),"%s: %s",
-           strerror(errno), *argv);
+    Stopif(execvp(*p->argv, p->argv) == -1, _Exit(M_FAILED_EXEC),"%s: %s",
+           strerror(errno), *p->argv);
 }
 
 static int m_cd(proc const *p)
 {
-    // Avoid casting from void* at every use
-    char **argv = p->argv.data;
     // cd to homedir if no directory specified
-    char *dir = (argv[1]) ? argv[1] : getenv("HOME");
+    char *dir = (p->argv[1]) ? p->argv[1] : getenv("HOME");
     Stopif(chdir(dir) == -1, return 1, "%s", strerror(errno));
     return 0;
 }
