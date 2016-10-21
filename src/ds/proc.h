@@ -34,7 +34,6 @@ typedef struct proc {
     _Bool completed; // Command has finished executing
     _Bool stopped; // Command has been stopped
     int exit_code; // Status code proc exited with
-    struct proc *next; // Pointer to next piped proc
 } proc;
 
 proc *new_proc(void);
@@ -47,7 +46,6 @@ typedef struct proc_io {
 } proc_io;
 
 typedef struct job {
-    struct job *next;
     char *name; // Name of command
     size_t index; // Index in job table
     proc **procs; // Vec of procs
