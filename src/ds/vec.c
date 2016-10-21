@@ -17,7 +17,7 @@
 */
 
 #include <stdlib.h> // calloc, realloc
-#include <stdint.h>
+#include <stdint.h> // uintptr_t
 #include <string.h> // memset
 #include "vec.h" // vec
 #include "../macros.h" // Assert_alloc
@@ -30,8 +30,7 @@ typedef struct vec_meta {
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wint-conversion"
 
-// Allocate array. Takes number of desired array members and the size of their
-// type
+// Allocate zero-initialized vector (a dynamically allocated array with prefixed metadata) of `size` bytes
 vec valloc(size_t size)
 {
     vec_meta data = { .cap = size, .len = 0 };
@@ -41,26 +40,34 @@ vec valloc(size_t size)
     return ((uintptr_t) ret) + sizeof data;
 }
 
+// NOTE: All the below functions REQUIRE that they be passed a vector. Their
+// behavior is undefined otherwise
+
+// Free vector
 void vfree(vec v)
 {
     free((uintptr_t) v - sizeof (vec_meta));
 }
 
+// Return the allocated size of the vector in bytes
 size_t vcapacity(vec v) 
 {
     return ((vec_meta *)((uintptr_t) v - sizeof (vec_meta)))->cap;
 }
 
+// Returns the length (the number of occupied elements of the vector)
 size_t vlen(vec v) 
 {
     return ((vec_meta *)((uintptr_t) v - sizeof (vec_meta)))->len;
 }
 
+// Allows the client to manually change the length (POTENTIALLY UNSAFE)
 void vsetlen(size_t val, vec v)
 {
     ((vec_meta *)((uintptr_t) v - sizeof (vec_meta)))->len = val;
 }
 
+// Add element to the end of a vector, growing it if necessary
 int vappend(void *elem, size_t elem_size, vec *v)
 {
     vec_meta *data = (uintptr_t) *v - sizeof *data;
@@ -78,6 +85,7 @@ int vappend(void *elem, size_t elem_size, vec *v)
 
 // Returns -1 if passed bad parameters, 1 if allocation failed or array
 // capacity is already SIZE_MAX bytes. 0 on success
+// 0 initializes newly allocated space
 int vgrow(vec *v)
 {
     if (!v || !*v) {

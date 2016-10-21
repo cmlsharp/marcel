@@ -143,6 +143,7 @@ static void gen_prompt(char *buf)
     Free(dir);
 }
 
+// Restores the user's input to readline's buffer
 static int restore_buffer(void)
 {
     // Temporarily block signals;
