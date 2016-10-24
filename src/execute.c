@@ -139,36 +139,37 @@ int launch_job(job *j)
     j->procs[proc_len-1]->fds[1] = io_fd[1];
     j->procs[proc_len-1]->fds[2] = io_fd[2];
 
-    for (size_t i = 0; i < proc_len; i++) {
+    for (proc **p_p = j->procs; p_p < j->procs + proc_len; p_p++) {
+        proc *p = *p_p;
         // Do not create pipe for last process
-        if (i != proc_len-1) {
+        if (p_p != j->procs + proc_len - 1) {
             int fd[2];
             pipe(fd);
-            j->procs[i]->fds[1] = fd[1];
-            j->procs[i+1]->fds[0] = fd[0];
+            p->fds[1] = fd[1];
+            (p+1)->fds[0] = fd[0];
         }
 
-        builtin *b = find_node(j->procs[i]->argv[0],filter_command, lookup_table);
+        builtin *b = find_node(p->argv[0],filter_command, lookup_table);
         proc_func f = b ? b->cmd : NULL;
 
         if (f) { // Builtin found
-            j->procs[i]->exit_code = f(j->procs[i]);
-            j->procs[i]->completed = 1;
+            p->exit_code = f(p);
+            p->completed = 1;
         } else {
-            pid_t p = fork();
-            Stopif(p < 0, return M_FAILED_EXEC, "Could not fork process: %s",
+            pid_t pid = fork();
+            Stopif(pid < 0, return M_FAILED_EXEC, "Could not fork process: %s",
                    strerror(errno));
-            if (p == 0) { // Child
-                Set_proc_group(j, p, j->pgid);
+            if (pid == 0) { // Child
+                Set_proc_group(j, pid, j->pgid);
                 reset_ignored_signals();
-                exec_proc(j->procs[i]);
+                exec_proc(p);
             } else { // Parent
-                Set_proc_group(j, p, j->pgid);
-                j->procs[i]->pid = p;
+                Set_proc_group(j, pid, j->pgid);
+                p->pid = pid;
             }
         }
 
-        fd_cleanup(j->procs[i]->fds, Arr_len(io_fd));
+        fd_cleanup(p->fds, Arr_len(io_fd));
     }
 
     if (!interactive) {
@@ -187,11 +188,12 @@ int launch_job(job *j)
 static void exec_proc(proc const *p)
 {
     size_t env_len  = vlen(p->env);
-    for (size_t i = 0; i < env_len; i++) {
-        char *value = p->env[i] + strlen(p->env[i]) + 1;
-        unsetenv(p->env[i]);
-        Stopif(setenv(p->env[i], value, 1) == -1, /* No action */,
-               "Could not set the following variable %s to %s", p->env[i], value);
+    for (char **e_p = p->env; e_p < p->env + env_len; e_p++) {
+        char *e = *e_p;
+        char *value = e + strlen(e) + 1;
+        unsetenv(e);
+        Stopif(setenv(e, value, 1) == -1, /* No action */,
+               "Could not set the following variable %s to %s", e, value);
     }
 
     for (size_t i = 0;  i < Arr_len(p->fds); i++) {

@@ -74,18 +74,19 @@ _Bool initialize_job_control(void)
 static void cleanup_jobs(void)
 {
     size_t len = vlen(job_table);
-    for (size_t i = 0; i < len; i++) {
-        if (!job_table[i]) {
+    for (job **j_p = job_table; j_p < job_table + len; j_p++) {
+        job *j = *j_p;
+        if (!j) {
             continue;
         }
 
-        if (job_table[i]->bkg) {
-            kill(job_table[i]->pgid, SIGHUP);
+        if (j->bkg) {
+            kill(j->pgid, SIGHUP);
         } else {
-            wait_for_job(job_table[i]);
+            wait_for_job(j);
         }
 
-        free_single_job(job_table[i]);
+        free_single_job(j);
     }
     vfree(job_table);
 }
@@ -126,19 +127,21 @@ _Bool mark_proc_status(pid_t pid, int status)
 {
     if (pid > 0) {
         size_t job_len = vlen(job_table);
-        for (size_t i = 0; i < job_len; i++) {
-            if (!job_table[i]) {
+        for (job **j_p = job_table; j_p < job_table + job_len; j_p++) {
+            job *j = *j_p;
+            if (!j) {
                 continue;
             }
-            size_t proc_len = vlen(job_table[i]->procs);
-            for (size_t j = 0; j < proc_len; j++) {
-                if (job_table[i]->procs[j]->pid == pid) {
+            size_t proc_len = vlen(j->procs);
+            for (proc **p_p = j->procs; p_p < j->procs + proc_len; p_p++) {
+                proc *p = *p_p;
+                if (p->pid == pid) {
                     if (WIFSTOPPED(status) || WIFCONTINUED(status)) {
-                        job_table[i]->procs[j]->stopped = !job_table[i]->procs[j]->stopped;
-                        job_table[i]->notified = 0;
+                        p->stopped = !p->stopped;
+                        j->notified = 0;
                     } else {
-                        job_table[i]->procs[j]->exit_code = (WIFSIGNALED(status)) ? M_SIGINT : WEXITSTATUS(status);
-                        job_table[i]->procs[j]->completed = 1;
+                        p->exit_code = (WIFSIGNALED(status)) ? M_SIGINT : WEXITSTATUS(status);
+                        p->completed = 1;
                     }
                 return 1;
                 }
@@ -190,23 +193,25 @@ int do_job_notification(void)
     update_status();
     int ret = 0;
     size_t job_len = vlen(job_table);
-    for (size_t i = 0; i < job_len; i++) {
-        if (!job_table[i]) {
+    for (job **j_p = job_table; j_p < job_table + job_len; j_p++) {
+        job *j = *j_p;
+        if (!j) {
             continue;
         }
         // If all procs have completed, job is completed
-        if (job_is_completed(job_table[i])) {
+        if (job_is_completed(j)) {
             // Only notify about background jobs
-            if (job_table[i]->bkg) {
-                format_job_info(job_table[i], "completed");
+            if (j->bkg) {
+                format_job_info(j, "completed");
             }
             // Get exit code from last process in
-            ret = job_table[i]->procs[vlen(job_table[i]->procs) - 1]->exit_code;
+            ret = j->procs[vlen(j->procs) - 1]->exit_code;
 
-            Cleanup(job_table[i], free_single_job);
-        } else if (job_is_stopped(job_table[i]) && !job_table[i]->notified) {
-            format_job_info(job_table[i], "stopped");
-            job_table[i]->notified = 1;
+            free_single_job(j);
+            *j_p = NULL;
+        } else if (job_is_stopped(j) && !j->notified) {
+            format_job_info(j, "stopped");
+            j->notified = 1;
         } else {
         }
     }
@@ -218,8 +223,8 @@ int do_job_notification(void)
 static void mark_job_as_running(job *j)
 {
     size_t proc_len = vlen(j->procs);
-    for (size_t i = 0; i < proc_len; i++) {
-        j->procs[i] = 0;
+    for (proc **p_p = j->procs; p_p < proc_len + j->procs; p_p++) {
+        (*p_p)->stopped = 0;
     }
 
     j->notified = 0;
@@ -239,8 +244,9 @@ void continue_job(job *j)
 _Bool job_is_stopped(job *j)
 {
     size_t proc_len = vlen(j->procs);
-    for (size_t i = 0; i < proc_len; i++) {
-        if (!j->procs[i]->completed && !j->procs[i]->stopped) {
+    for (proc **p_p = j->procs; p_p < j->procs + proc_len; p_p++) {
+        proc *p = *p_p;
+        if (!p->completed && !p->stopped) {
             return 0;
         }
     }
@@ -251,8 +257,8 @@ _Bool job_is_stopped(job *j)
 _Bool job_is_completed(job *j)
 {
     size_t proc_len = vlen(j->procs);
-    for (size_t i = 0; i < proc_len; i++) {
-        if (!j->procs[i]->completed) {
+    for (proc **p_p = j->procs; p_p < proc_len + j->procs; p_p++) {
+        if (!(*p_p)->completed) {
             return 0;
         }
     }
@@ -277,9 +283,10 @@ _Bool register_job(job *j)
 #pragma GCC diagnostic pop
 #pragma GCC diagnostic pop
 
-    for (size_t i = 0; i < job_cap; i++) { 
-        if (!job_table[i]) {
-            job_table[i] = j;
+    for (job **j_p = job_table; j_p < job_table + job_cap; j_p++) { 
+        if (!*j_p) {
+            *j_p = j;
+            size_t i = j_p - job_table;
             j->index = i;
             if (i >= vlen(job_table)) {
                 vsetlen(vlen(job_table) + 1, job_table);

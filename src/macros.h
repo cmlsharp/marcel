@@ -24,6 +24,11 @@
 #include <errno.h> // errno
 #include <string.h> // strerror
 
+// Use GCC specific attributes if they are available, ignore them if not
+#ifndef __attribute__
+#define __attribute__(X)
+#endif
+
 // Length of array. ARR cannot be a pointer
 #define Arr_len(ARR) (sizeof (ARR) / sizeof *(ARR))
 

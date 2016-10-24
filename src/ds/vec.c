@@ -31,13 +31,15 @@ typedef struct vec_meta {
 #pragma GCC diagnostic ignored "-Wint-conversion"
 
 // Allocate zero-initialized vector (a dynamically allocated array with prefixed metadata) of `size` bytes
+__attribute__((malloc))
 vec valloc(size_t size)
 {
     vec_meta data = { .cap = size, .len = 0 };
-    vec ret = calloc(sizeof data + size, 1);
+    vec ret = malloc(sizeof data + size);
     Assert_alloc(ret);
     memcpy(ret, &data, sizeof data);
-    return ((uintptr_t) ret) + sizeof data;
+    ret = ((uintptr_t) ret) + sizeof data;
+    return memset(ret, 0, size);
 }
 
 // NOTE: All the below functions REQUIRE that they be passed a vector. Their

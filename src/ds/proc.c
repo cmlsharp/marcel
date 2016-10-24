@@ -71,8 +71,8 @@ void free_single_job(job *j)
     }
     Free(j->name);
     size_t proc_len = vlen(j->procs);
-    for (size_t i = 0; i < proc_len; i++) {
-        Cleanup(j->procs[i], free_proc);
+    for (proc **p_p = j->procs; p_p < j->procs + proc_len; p_p++) {
+        Cleanup(*p_p, free_proc);
     }
     vfree(j->procs);
     Free(j);
