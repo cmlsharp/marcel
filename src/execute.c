@@ -25,12 +25,12 @@
 #include <sys/types.h> // pid_t
 #include <unistd.h> // close, dup, getpid, setpgid, tcsetpgrp
 
+#include "signals.h" // reset_signals
 #include "ds/proc.h" // proc, job
 #include "ds/hash_table.h" // hash_table, add_node, find_node, free_table
 #include "execute.h" // proc_func
 #include "jobs.h" // interactive, shell_term, wait_for_job, put_job_in_*...
 #include "macros.h" // Stopif, Free, Arr_len
-#include "signals.h" // reset_signals
 
 // Default mode with which to create files
 #define FILE_MASK 0666
@@ -143,10 +143,11 @@ int launch_job(job *j)
         proc *p = *p_p;
         // Do not create pipe for last process
         if (p_p != j->procs + proc_len - 1) {
+            proc *p_next = *(p_p+1);
             int fd[2];
             pipe(fd);
             p->fds[1] = fd[1];
-            (p+1)->fds[0] = fd[0];
+            p_next->fds[0] = fd[0];
         }
 
         builtin *b = find_node(p->argv[0],filter_command, lookup_table);

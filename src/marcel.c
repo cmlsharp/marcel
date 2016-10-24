@@ -25,13 +25,13 @@
 #include <readline/readline.h> // readline, rl_complete
 #include <readline/history.h> // add_history
 
+#include "signals.h" // initialize_signal_handling, sig_flags...
 #include "ds/proc.h" // proc, job etc.
 #include "execute.h" // launch_job, initialize_builtins
 #include "jobs.h" // initialize_job_control, do_job_notification
 #include "lexer.h" // YY_BUFFER_STATE, yy_delete_buffer, yy_scan_string
 #include "macros.h" // Stopif, Free
 #include "parser.h" // yyparse
-#include "signals.h" // initialize_signal_handling, sig_flags...
 
 #define MAX_PROMPT_LEN 1024
 int exit_code;
