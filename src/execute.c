@@ -81,7 +81,8 @@ _Bool initialize_builtins(void)
     return 1;
 }
 
-static inline void builtin_destructor(node *n) {
+static inline void builtin_destructor(node *n) 
+{
     free(n->value);
 }
 
@@ -131,7 +132,7 @@ int launch_job(job *j)
         Stopif(io_fd[i] == -1, fd_cleanup(io_fd, i);
                return M_FAILED_IO, "%s", strerror(errno));
     }
-    size_t proc_len = vlen(j->procs);
+    size_t proc_len = vec_len(j->procs);
 
     // Set input fd in first process
     j->procs[0]->fds[0] = io_fd[0];
@@ -188,7 +189,7 @@ int launch_job(job *j)
 
 static void exec_proc(proc const *p)
 {
-    size_t env_len  = vlen(p->env);
+    size_t env_len  = vec_len(p->env);
     for (char **e_p = p->env; e_p < p->env + env_len; e_p++) {
         char *e = *e_p;
         char *value = e + strlen(e) + 1;

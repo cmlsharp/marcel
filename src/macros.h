@@ -57,15 +57,11 @@
 
 
 // Special case of Stopif for allocation errors
-#ifndef NDEBUG
 #define Assert_alloc(PTR)                                                   \
     Stopif(!(PTR),                                                          \
            exit(M_FAILED_ALLOC),                                            \
            "Fatal error encountered. Quitting. System reports %s",          \
            strerror(errno))
-#else
-#define Assert_alloc(PTR)
-#endif
 
 // More general version of Free. Allows for custom destructor
 // NOTE: _F(NULL) must be defined behavior for this macro to serve its purpose

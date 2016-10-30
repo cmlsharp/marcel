@@ -25,13 +25,13 @@
 
 #include "execute.h" // builtin, lookup_table
 #include "ds/proc.h" // proc, job
-#include "ds/vec.h" // vappend
+#include "ds/vec.h" // vec_append
 #include "lexer.h" // yylex (in bison generated code)
 #include "macros.h" // Stopif, Free
 
 #define P_TRUNCATE (O_WRONLY | O_TRUNC | O_CREAT)
 #define P_APPEND (O_WRONLY | O_APPEND | O_CREAT)
-#define P_LAST (p_job->procs[vlen(p_job->procs)-1])
+#define P_LAST (p_job->procs[vec_len(p_job->procs)-1])
 
 // I hate to use a macro for this but the lack of code duplication is worth it
 #define Add_io_mod(PATH, FD, OFLAG)                                                                 \
@@ -75,7 +75,7 @@ int yyerror (job *w, char const *s);
     /*envs pipes_line {*/
         /*// Process has variables set but no command, meaning that its just an assigment*/
         /*if (!p_job->procs[0]->argv[0]) {*/
-            /*size_t env_len = vlen(p_job->procs[0]->env);*/
+            /*size_t env_len = vec_len(p_job->procs[0]->env);*/
             /*for (size_t i = 0; i < env_len; i++) {*/
                 /*builtin *b = malloc(sizeof *b);*/
                 /*Assert_alloc(b);*/
@@ -141,19 +141,19 @@ cmd:
    ;
 
 envs:
-    envs ASSIGN {vappend(&($2), sizeof (char*), &(P_LAST->env));}
+    envs ASSIGN {vec_append(&($2), sizeof (char*), &(P_LAST->env));}
     | { // this is reached only before the first arg of each pipe 
         // e.g. the command:  var=val a b | c d | var2=val2 e f
         //                   ^             ^     ^    <-- reached in those places
         proc *p = new_proc();
-        vappend(&p, sizeof (proc *), &(p_job->procs));
+        vec_append(&p, sizeof (proc *), &(p_job->procs));
         char *null = NULL;
-        vappend(&null, sizeof (char *), &(P_LAST->argv));
+        vec_append(&null, sizeof (char *), &(P_LAST->argv));
     }
     ;
 
 args:
-    args real_arg {vappend(&($2), sizeof (char*), &(P_LAST->argv));}
+    args real_arg {vec_append(&($2), sizeof (char*), &(P_LAST->argv));}
     | {}
     ;
 

@@ -116,7 +116,7 @@ int main(void)
 
 // For symmetry with prepare_for_input. Turns off async handling for SIGCHLD
 // and informs signal handler that it shouldn't longjmp out
-static void prepare_for_processing(void)
+static inline void prepare_for_processing(void)
 {
     sig_flags &= ~WAITING_FOR_INPUT;
     sig_default(SIGCHLD);
@@ -125,7 +125,7 @@ static void prepare_for_processing(void)
 
 // Prints prompt and returns line entered by user. Returned string must be
 // freed. Returns NULL on EOF
-static char *get_input(void)
+static inline char *get_input(void)
 {
     char prompt_buf[MAX_PROMPT_LEN] = {0};
     gen_prompt(prompt_buf);
@@ -133,7 +133,7 @@ static char *get_input(void)
 }
 
 // Creates shell prompt based on username and current directory
-static void gen_prompt(char *buf)
+static inline void gen_prompt(char *buf)
 {
     char *user = getenv("USER");
     char *dir = getcwd(NULL, 1024);
@@ -144,7 +144,7 @@ static void gen_prompt(char *buf)
 }
 
 // Restores the user's input to readline's buffer
-static int restore_buffer(void)
+static inline int restore_buffer(void)
 {
     // Temporarily block signals;
     sigset_t new;

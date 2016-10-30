@@ -27,7 +27,7 @@
 #include <unistd.h> // getpgid, tcgetpgrp, tcsetpgrp, getpgrp...
 
 #include "ds/proc.h" // job, free_single_job, proc
-#include "ds/vec.h" // dyn_arrray, valloc
+#include "ds/vec.h" // dyn_arrray, vec_alloc
 #include "jobs.h" // function prototypes
 #include "signals.h" // sig_flags, WAITING_FOR_INPUT
 #include "macros.h" // Cleanup, Stopif, Err_msg
@@ -49,7 +49,7 @@ static void cleanup_jobs(void);
 // Returns true on success, false on failure
 _Bool initialize_job_control(void)
 {
-    job_table = valloc(JOB_TABLE_INIT_SIZE * sizeof *job_table);
+    job_table = vec_alloc(JOB_TABLE_INIT_SIZE * sizeof *job_table);
     interactive = isatty(SHELL_TERM);
     if (interactive) {
         // Loop until in foreground
@@ -73,7 +73,7 @@ _Bool initialize_job_control(void)
 // Free job table and kill all background jobs
 static void cleanup_jobs(void)
 {
-    size_t len = vlen(job_table);
+    size_t len = vec_len(job_table);
     for (job **j_p = job_table; j_p < job_table + len; j_p++) {
         job *j = *j_p;
         if (!j) {
@@ -88,7 +88,7 @@ static void cleanup_jobs(void)
 
         free_single_job(j);
     }
-    vfree(job_table);
+    vec_free(job_table);
 }
 
 // Put job in foreground, continuing if cont is true
@@ -126,13 +126,13 @@ void put_job_in_background(job *j, _Bool cont)
 _Bool mark_proc_status(pid_t pid, int status)
 {
     if (pid > 0) {
-        size_t job_len = vlen(job_table);
+        size_t job_len = vec_len(job_table);
         for (job **j_p = job_table; j_p < job_table + job_len; j_p++) {
             job *j = *j_p;
             if (!j) {
                 continue;
             }
-            size_t proc_len = vlen(j->procs);
+            size_t proc_len = vec_len(j->procs);
             for (proc **p_p = j->procs; p_p < j->procs + proc_len; p_p++) {
                 proc *p = *p_p;
                 if (p->pid == pid) {
@@ -192,7 +192,7 @@ int do_job_notification(void)
 {
     update_status();
     int ret = 0;
-    size_t job_len = vlen(job_table);
+    size_t job_len = vec_len(job_table);
     for (job **j_p = job_table; j_p < job_table + job_len; j_p++) {
         job *j = *j_p;
         if (!j) {
@@ -205,8 +205,15 @@ int do_job_notification(void)
                 format_job_info(j, "completed");
             }
             // Get exit code from last process in
-            ret = j->procs[vlen(j->procs) - 1]->exit_code;
+            ret = j->procs[vec_len(j->procs) - 1]->exit_code;
 
+            // We are removing last job, calculate new last job index
+            // Amortized O(1)
+            if ((size_t) (j_p - job_table + 1) >= job_len) {
+                job **j_crawl = j_p - 1;
+                for (; j_crawl >= job_table && !*j_crawl; j_crawl--);
+                vec_setlen(j_crawl - job_table + 1, job_table);
+            }
             free_single_job(j);
             *j_p = NULL;
         } else if (job_is_stopped(j) && !j->notified) {
@@ -222,7 +229,7 @@ int do_job_notification(void)
 // Mark stopped job as running
 static void mark_job_as_running(job *j)
 {
-    size_t proc_len = vlen(j->procs);
+    size_t proc_len = vec_len(j->procs);
     for (proc **p_p = j->procs; p_p < proc_len + j->procs; p_p++) {
         (*p_p)->stopped = 0;
     }
@@ -243,7 +250,7 @@ void continue_job(job *j)
 // Return true if all processes in job have stopped or completed
 _Bool job_is_stopped(job *j)
 {
-    size_t proc_len = vlen(j->procs);
+    size_t proc_len = vec_len(j->procs);
     for (proc **p_p = j->procs; p_p < j->procs + proc_len; p_p++) {
         proc *p = *p_p;
         if (!p->completed && !p->stopped) {
@@ -256,7 +263,7 @@ _Bool job_is_stopped(job *j)
 // Check if all processes in job are completed
 _Bool job_is_completed(job *j)
 {
-    size_t proc_len = vlen(j->procs);
+    size_t proc_len = vec_len(j->procs);
     for (proc **p_p = j->procs; p_p < proc_len + j->procs; p_p++) {
         if (!(*p_p)->completed) {
             return 0;
@@ -274,9 +281,9 @@ _Bool register_job(job *j)
     }
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wincompatible-pointer-types"
-    size_t job_cap = vcapacity(job_table) / sizeof *job_table;
-    if ((vlen(job_table) + 1 >= job_cap)
-            && vgrow(&job_table) != 0) {
+    size_t job_cap = vec_capacity(job_table) / sizeof *job_table;
+    if ((vec_len(job_table) + 1 >= job_cap)
+            && vec_grow(&job_table) != 0) {
         return 0;
     }
 #pragma GCC diagnostic pop
@@ -288,8 +295,8 @@ _Bool register_job(job *j)
             *j_p = j;
             size_t i = j_p - job_table;
             j->index = i;
-            if (i >= vlen(job_table)) {
-                vsetlen(vlen(job_table) + 1, job_table);
+            if (i >= vec_len(job_table)) {
+                vec_setlen(vec_len(job_table) + 1, job_table);
             }
             return 1;
         }

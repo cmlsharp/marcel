@@ -26,8 +26,8 @@ proc *new_proc(void)
 {
     proc *ret = calloc(1, sizeof *ret);
     Assert_alloc(ret);
-    ret->argv = valloc(ARGV_INIT_SIZE * sizeof *ret->argv);
-    ret->env =  valloc(ARGV_INIT_SIZE * sizeof *ret->env);
+    ret->argv = vec_alloc(ARGV_INIT_SIZE * sizeof *ret->argv);
+    ret->env =  vec_alloc(ARGV_INIT_SIZE * sizeof *ret->env);
 
     for (size_t i = 0; i < Arr_len(ret->fds); i++) {
         ret->fds[i] = i;
@@ -41,11 +41,11 @@ void free_proc(proc *p)
 {
     char ***a[] = {&p->argv, &p->env};
     for (size_t i = 0 ; i < Arr_len(a); i++) {
-        size_t len = vlen(*a[i]);
+        size_t len = vec_len(*a[i]);
         for (size_t j = 0; j < len; j++) {
             Free((*a[i])[j]);
         }
-        vfree(*a[i]);
+        vec_free(*a[i]);
     }
     Free(p);
 }
@@ -56,7 +56,7 @@ job *new_job(void)
 {
     job *ret = calloc(1, sizeof *ret);
     Assert_alloc(ret);
-    ret->procs = valloc(INITIAL_PROC_CAP * sizeof *ret->procs);
+    ret->procs = vec_alloc(INITIAL_PROC_CAP * sizeof *ret->procs);
     return ret;
 }
 
@@ -70,11 +70,11 @@ void free_single_job(job *j)
         Free(j->io[i].path);
     }
     Free(j->name);
-    size_t proc_len = vlen(j->procs);
+    size_t proc_len = vec_len(j->procs);
     for (proc **p_p = j->procs; p_p < j->procs + proc_len; p_p++) {
         Cleanup(*p_p, free_proc);
     }
-    vfree(j->procs);
+    vec_free(j->procs);
     Free(j);
 }
 

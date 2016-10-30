@@ -21,11 +21,11 @@
 
 typedef void* vec;
 
-vec valloc(size_t size);
-void vfree(vec v);
-size_t vcapacity(vec v);
-size_t vlen(vec v);
-void vsetlen(size_t val, vec v);
-int vappend(void *elem, size_t elem_size, vec *v);
-int vgrow(vec *v);
+vec vec_alloc(size_t size);
+void vec_free(vec v);
+size_t vec_capacity(vec v);
+size_t vec_len(vec v);
+void vec_setlen(size_t val, vec v);
+int vec_append(void *elem, size_t elem_size, vec *v);
+int vec_grow(vec *v);
 #endif

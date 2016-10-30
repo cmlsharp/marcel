@@ -32,7 +32,7 @@ typedef struct vec_meta {
 
 // Allocate zero-initialized vector (a dynamically allocated array with prefixed metadata) of `size` bytes
 __attribute__((malloc))
-vec valloc(size_t size)
+vec vec_alloc(size_t size)
 {
     vec_meta data = { .cap = size, .len = 0 };
     vec ret = malloc(sizeof data + size);
@@ -46,37 +46,35 @@ vec valloc(size_t size)
 // behavior is undefined otherwise
 
 // Free vector
-void vfree(vec v)
+void vec_free(vec v)
 {
     free((uintptr_t) v - sizeof (vec_meta));
 }
 
 // Return the allocated size of the vector in bytes
-size_t vcapacity(vec v) 
+size_t vec_capacity(vec v) 
 {
     return ((vec_meta *)((uintptr_t) v - sizeof (vec_meta)))->cap;
 }
 
 // Returns the length (the number of occupied elements of the vector)
-size_t vlen(vec v) 
+size_t vec_len(vec v) 
 {
     return ((vec_meta *)((uintptr_t) v - sizeof (vec_meta)))->len;
 }
 
 // Allows the client to manually change the length (POTENTIALLY UNSAFE)
-void vsetlen(size_t val, vec v)
+void vec_setlen(size_t val, vec v)
 {
     ((vec_meta *)((uintptr_t) v - sizeof (vec_meta)))->len = val;
 }
 
 // Add element to the end of a vector, growing it if necessary
-int vappend(void *elem, size_t elem_size, vec *v)
+int vec_append(void *elem, size_t elem_size, vec *v)
 {
     vec_meta *data = (uintptr_t) *v - sizeof *data;
     if ((data->len + 1) * elem_size >= data->cap) {
-        if (vgrow(v) != 0) {
-            return 1;
-        }
+        vec_grow(v);
         // Reinitialize data in case realloc changed the memory location
         data = (uintptr_t) *v - sizeof *data;
     }
@@ -88,7 +86,7 @@ int vappend(void *elem, size_t elem_size, vec *v)
 // Returns -1 if passed bad parameters, 1 if allocation failed or array
 // capacity is already SIZE_MAX bytes. 0 on success
 // 0 initializes newly allocated space
-int vgrow(vec *v)
+int vec_grow(vec *v)
 {
     if (!v || !*v) {
         return -1;
@@ -104,9 +102,7 @@ int vgrow(vec *v)
         return 1;
     }
     ret = realloc(ret, sizeof (vec_meta) + bytes); 
-    if (!ret) {
-        return 1;
-    }
+    Assert_alloc(ret);
 
     size_t *cap = &((vec_meta*) ret)->cap;
     memset(sizeof (vec_meta) + (uintptr_t) ret + *cap , 0, bytes - *cap);

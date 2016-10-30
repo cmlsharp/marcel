@@ -30,13 +30,12 @@ static unsigned long get_index(char const *key, size_t size);
 
 hash_table new_table(size_t nmemb)
 {
-    hash_table ret = valloc(nmemb * sizeof *ret);
-    return ret;
+    return vec_alloc(nmemb * sizeof (node *));
 }
 
 void delete_node(char const *k, hash_table t)
 {
-    node *crawler = t[get_index(k, vcapacity(t) / sizeof *t)];
+    node *crawler = t[get_index(k, vec_capacity(t) / sizeof *t)];
     node *prev = NULL;
     while (crawler) {
         if (strcmp(k, crawler->key) == 0) {
@@ -60,7 +59,7 @@ int add_node(char const *k, void *v, hash_table t)
 
     new->key = k;
     new->value = v;
-    unsigned long i = get_index(k, vcapacity(t) / sizeof *t);
+    unsigned long i = get_index(k, vec_capacity(t) / sizeof *t);
     new->next = t[i];
 
     t[i] = new;
@@ -72,7 +71,7 @@ void *find_node(char const *k, _Bool (*filter)(void *), hash_table t)
     if (!t) {
         return NULL;
     }
-    node *crawler = t[get_index(k, vcapacity(t) / sizeof *t)];
+    node *crawler = t[get_index(k, vec_capacity(t) / sizeof *t)];
     while (crawler) {
         if (strcmp(crawler->key, k) == 0) {
             _Bool end = filter ? filter(crawler->value) : 1;
@@ -92,7 +91,7 @@ void free_table(hash_table t, void (*destructor)(node *))
     if (!t) {
         return;
     }
-    size_t table_cap = vcapacity(t) / sizeof *t;
+    size_t table_cap = vec_capacity(t) / sizeof *t;
     // Free contents
     for (size_t i = 0; i < table_cap; i++) {
         node *crawler = t[i];
@@ -105,7 +104,7 @@ void free_table(hash_table t, void (*destructor)(node *))
             crawler = next;
         }
     }
-    vfree(t);
+    vec_free(t);
 }
 
 
