@@ -1,17 +1,17 @@
 /*
  * Marcel the Shell -- a shell written in C
  * Copyright (C) 2016 Chad Sharp
- * 
+ *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
@@ -81,7 +81,7 @@ _Bool initialize_builtins(void)
     return 1;
 }
 
-static inline void builtin_destructor(node *n) 
+static inline void builtin_destructor(node *n)
 {
     free(n->value);
 }
@@ -115,7 +115,8 @@ static void fd_cleanup(int *fd_arr, size_t n)
         }                                       \
     } while (0)
 
-static inline _Bool filter_command(void *val) {
+static inline _Bool filter_command(void *val)
+{
     builtin *b = val;
     return b->type == CMD;
 }
@@ -226,9 +227,9 @@ static int m_exit(proc const *p)
 static int m_help(proc const *p)
 {
     char help_msg[] = "Marcel the Shell (with shoes on) v. " VERSION "\n"
-                     "Written by Chad Sharp\n"
-                     "\n"
-                     "This shell only fights when provoked.\n";
+                      "Written by Chad Sharp\n"
+                      "\n"
+                      "This shell only fights when provoked.\n";
     write(p->fds[1], help_msg, sizeof help_msg / sizeof (char));
     return 0;
 }

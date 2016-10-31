@@ -1,17 +1,17 @@
 /*
  * Marcel the Shell -- a shell written in C
  * Copyright (C) 2016 Chad Sharp
- * 
+ *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
@@ -143,7 +143,7 @@ _Bool mark_proc_status(pid_t pid, int status)
                         p->exit_code = (WIFSIGNALED(status)) ? M_SIGINT : WEXITSTATUS(status);
                         p->completed = 1;
                     }
-                return 1;
+                    return 1;
                 }
             }
         }
@@ -219,7 +219,6 @@ int do_job_notification(void)
         } else if (job_is_stopped(j) && !j->notified) {
             format_job_info(j, "stopped");
             j->notified = 1;
-        } else {
         }
     }
     return ret;
@@ -290,7 +289,7 @@ _Bool register_job(job *j)
 #pragma GCC diagnostic pop
 #pragma GCC diagnostic pop
 
-    for (job **j_p = job_table; j_p < job_table + job_cap; j_p++) { 
+    for (job **j_p = job_table; j_p < job_table + job_cap; j_p++) {
         if (!*j_p) {
             *j_p = j;
             size_t i = j_p - job_table;

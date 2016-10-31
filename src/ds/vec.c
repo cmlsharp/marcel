@@ -1,17 +1,17 @@
 /*
  * Marcel the Shell -- a shell written in C
  * Copyright (C) 2016 Chad Sharp
- * 
+ *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
@@ -52,13 +52,13 @@ void vec_free(vec v)
 }
 
 // Return the allocated size of the vector in bytes
-size_t vec_capacity(vec v) 
+size_t vec_capacity(vec v)
 {
     return ((vec_meta *)((uintptr_t) v - sizeof (vec_meta)))->cap;
 }
 
 // Returns the length (the number of occupied elements of the vector)
-size_t vec_len(vec v) 
+size_t vec_len(vec v)
 {
     return ((vec_meta *)((uintptr_t) v - sizeof (vec_meta)))->len;
 }
@@ -91,7 +91,7 @@ int vec_grow(vec *v)
     if (!v || !*v) {
         return -1;
     }
-    
+
     vec ret = (uintptr_t) *v - sizeof (vec_meta);
     size_t bytes = ((vec_meta*) ret)->cap;
     if (bytes < SIZE_MAX / 2) {
@@ -101,7 +101,7 @@ int vec_grow(vec *v)
     } else {
         return 1;
     }
-    ret = realloc(ret, sizeof (vec_meta) + bytes); 
+    ret = realloc(ret, sizeof (vec_meta) + bytes);
     Assert_alloc(ret);
 
     size_t *cap = &((vec_meta*) ret)->cap;
