@@ -45,6 +45,8 @@ void delete_node(char const *k, hash_table t)
             Free(crawler);
             return;
         }
+        prev = crawler;
+        crawler = crawler->next;
     }
 }
 
