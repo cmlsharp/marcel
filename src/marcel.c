@@ -34,14 +34,16 @@
 #include "parser.h" // yyparse
 
 #define MAX_PROMPT_LEN 1024
+#define HIST_FILE ".marcel.hist"
 int exit_code;
 
 static char *saved_line;
 static int saved_point;
-static int restore_buffer(void);
-static void prepare_for_processing(void);
-static void gen_prompt(char *buf);
-static char *get_input(void);
+static inline int restore_buffer(void);
+static inline void prepare_for_processing(void);
+static inline void gen_prompt(char *buf);
+static inline char *path_concat(char *dir, char *file);
+static inline char *get_input(void);
 
 // This has to ba a macro because sigsetjmp is picky about the its stack frame
 // it returns into
@@ -82,6 +84,11 @@ int main(void)
     rl_bind_key('\t', rl_complete);
     rl_set_signals();
 
+    // Setup history
+    char *home = getenv("HOME");
+    char *hist_path = path_concat(home, HIST_FILE);
+    read_history(hist_path);
+
     // buffer for stdin
     char *buf = NULL;
 
@@ -97,7 +104,7 @@ int main(void)
         add_history(buf);
 
         YY_BUFFER_STATE b = yy_scan_string(buf);
-        if ((yyparse(j) == 0) && j->valid) {
+        if (!yyparse(j) && j->valid) {
             register_job(j);
             launch_job(j);
         } else {
@@ -110,6 +117,8 @@ int main(void)
         exit_code = do_job_notification();
         prepare_for_input();
     }
+    write_history(hist_path);
+    free(hist_path);
     return exit_code;
 }
 
@@ -159,4 +168,16 @@ static inline int restore_buffer(void)
     // Restore signal mask
     sig_setmask(old);
     return 0;
+}
+
+static inline char *path_concat(char *dir, char *file) 
+{
+    size_t dlen = strlen(dir);
+    size_t len = dlen + strlen(file) + 2;
+    char *buf = malloc(len * sizeof *buf);
+    Assert_alloc(buf);
+    strcpy(buf, dir);
+    buf[dlen] = '/';
+    strcpy(buf + dlen + 1, file);
+    return buf;
 }

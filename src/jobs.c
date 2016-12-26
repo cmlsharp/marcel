@@ -287,7 +287,6 @@ _Bool register_job(job *j)
     }
 #pragma GCC diagnostic pop
 #pragma GCC diagnostic pop
-#pragma GCC diagnostic pop
 
     for (job **j_p = job_table; j_p < job_table + job_cap; j_p++) {
         if (!*j_p) {
