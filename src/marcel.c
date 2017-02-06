@@ -28,7 +28,7 @@
 #include "signals.h" // initialize_signal_handling, sig_flags...
 #include "ds/proc.h" // proc, job etc.
 #include "execute.h" // launch_job, initialize_builtins
-#include "jobs.h" // initialize_job_control, do_job_notification
+#include "jobs.h" // initialize_job_control, report_job_status
 #include "lexer.h" // YY_BUFFER_STATE, yy_delete_buffer, yy_scan_string
 #include "macros.h" // Stopif, Free
 #include "parser.h" // yyparse
@@ -114,7 +114,7 @@ int main(void)
         Cleanup(b, yy_delete_buffer);
         Free(buf);
 
-        exit_code = do_job_notification();
+        exit_code = report_job_status();
         prepare_for_input();
     }
     write_history(hist_path);

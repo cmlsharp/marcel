@@ -52,7 +52,7 @@ static char const *builtin_names[] = {
 static proc_func const builtin_funcs[] = {
     &m_cd,
     &m_exit,
-    &m_help
+    &m_help,
 };
 
 // Hash table for shell builtins
@@ -133,18 +133,18 @@ int launch_job(job *j)
         Stopif(io_fd[i] == -1, fd_cleanup(io_fd, i);
                return M_FAILED_IO, "%s", strerror(errno));
     }
-    size_t proc_len = vec_len(j->procs);
+    proc **proc_end = j->procs + vec_len(j->procs);
 
     // Set input fd in first process
     j->procs[0]->fds[0] = io_fd[0];
     // Set output/error fds in last process
-    j->procs[proc_len-1]->fds[1] = io_fd[1];
-    j->procs[proc_len-1]->fds[2] = io_fd[2];
+    proc_end[-1]->fds[1] = io_fd[1];
+    proc_end[-1]->fds[2] = io_fd[2];
 
-    for (proc **p_p = j->procs; p_p < j->procs + proc_len; p_p++) {
+    for (proc **p_p = j->procs; p_p != proc_end; p_p++) {
         proc *p = *p_p;
         // Do not create pipe for last process
-        if (p_p != j->procs + proc_len - 1) {
+        if (p_p != proc_end - 1) {
             proc *p_next = *(p_p+1);
             int fd[2];
             pipe(fd);
@@ -153,10 +153,9 @@ int launch_job(job *j)
         }
 
         builtin *b = find_node(p->argv[0],filter_command, lookup_table);
-        proc_func f = b ? b->cmd : NULL;
 
-        if (f) { // Builtin found
-            p->exit_code = f(p);
+        if (b) { // Builtin found
+            p->exit_code = b->cmd(p);
             p->completed = 1;
         } else {
             pid_t pid = fork();
@@ -178,10 +177,10 @@ int launch_job(job *j)
     if (!interactive) {
         wait_for_job(j);
     } else if (j->bkg) {
-        put_job_in_background(j, 0);
+        send_to_background(j, 0);
         format_job_info(j, "launched");
     } else {
-        put_job_in_foreground(j, 0);
+        send_to_foreground(j, 0);
     }
 
     return 0;
@@ -190,8 +189,8 @@ int launch_job(job *j)
 
 static void exec_proc(proc const *p)
 {
-    size_t env_len  = vec_len(p->env);
-    for (char **e_p = p->env; e_p < p->env + env_len; e_p++) {
+    char **env_end = p->env + vec_len(p->env);
+    for (char **e_p = p->env; e_p != env_end; e_p++) {
         char *e = *e_p;
         char *value = e + strlen(e) + 1;
         unsetenv(e);

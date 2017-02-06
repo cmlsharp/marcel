@@ -151,7 +151,7 @@ static void handler_sync(sigstate state)
         exit_code = M_SIGINT;
         break;
     case SIGCHLD:
-        exit_code = do_job_notification();
+        exit_code = report_job_status();
         break;
     }
     sig_setmask(old);

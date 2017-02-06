@@ -70,8 +70,8 @@ void free_single_job(job *j)
         Free(j->io[i].path);
     }
     Free(j->name);
-    size_t proc_len = vec_len(j->procs);
-    for (proc **p_p = j->procs; p_p < j->procs + proc_len; p_p++) {
+    proc **proc_end = j->procs + vec_len(j->procs);
+    for (proc **p_p = j->procs; p_p != proc_end; p_p++) {
         Cleanup(*p_p, free_proc);
     }
     vec_free(j->procs);

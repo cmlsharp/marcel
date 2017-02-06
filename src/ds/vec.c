@@ -110,5 +110,7 @@ int vec_grow(vec *v)
     *v = (uintptr_t) ret + sizeof (vec_meta);
     return 0;
 }
+
+
 #pragma GCC diagnostic pop
 #pragma GCC diagnostic pop

@@ -73,8 +73,8 @@ _Bool initialize_job_control(void)
 // Free job table and kill all background jobs
 static void cleanup_jobs(void)
 {
-    size_t len = vec_len(job_table);
-    for (job **j_p = job_table; j_p < job_table + len; j_p++) {
+    job **end = job_table + vec_len(job_table);
+    for (job **j_p = job_table; j_p != end; j_p++) {
         job *j = *j_p;
         if (!j) {
             continue;
@@ -92,7 +92,7 @@ static void cleanup_jobs(void)
 }
 
 // Put job in foreground, continuing if cont is true
-void put_job_in_foreground(job *j, _Bool cont)
+void send_to_foreground(job *j, _Bool cont)
 {
     // Put job in foreground
     tcsetpgrp(SHELL_TERM, j->pgid);
@@ -113,7 +113,7 @@ void put_job_in_foreground(job *j, _Bool cont)
 }
 
 // Put job in background, send SIGCONT if cont is true
-void put_job_in_background(job *j, _Bool cont)
+void send_to_background(job *j, _Bool cont)
 {
     // Send SIGCONT if necessary
     if (cont) {
@@ -123,17 +123,18 @@ void put_job_in_background(job *j, _Bool cont)
 
 // Find proc that corresponds with pid and mark it as stopped or completed as
 // apropriate.  Return true on success, false on failure
+// TODO: Extend to returning information about other kinds of signals
 _Bool mark_proc_status(pid_t pid, int status)
 {
     if (pid > 0) {
-        size_t job_len = vec_len(job_table);
-        for (job **j_p = job_table; j_p < job_table + job_len; j_p++) {
+        job **job_end = job_table + vec_len(job_table);
+        for (job **j_p = job_table; j_p != job_end; j_p++) {
             job *j = *j_p;
             if (!j) {
                 continue;
             }
-            size_t proc_len = vec_len(j->procs);
-            for (proc **p_p = j->procs; p_p < j->procs + proc_len; p_p++) {
+            proc **proc_end = vec_len(j->procs) + j->procs;
+            for (proc **p_p = j->procs; p_p != proc_end; p_p++) {
                 proc *p = *p_p;
                 if (p->pid == pid) {
                     if (WIFSTOPPED(status) || WIFCONTINUED(status)) {
@@ -159,7 +160,7 @@ _Bool mark_proc_status(pid_t pid, int status)
 }
 
 // Check for processes with statuses to report (without blocking)
-void update_status(void)
+void check_job_status(void)
 {
     int status = 0;
     pid_t pid = 0;
@@ -176,8 +177,8 @@ void wait_for_job(job *j)
     do {
         pid = waitpid(-j->pgid, &status, WUNTRACED | WCONTINUED);
     } while (mark_proc_status(pid, status)
-             && !job_is_stopped(j)
-             && !job_is_completed(j));
+             && !is_stopped(j)
+             && !is_completed(j));
 
 }
 
@@ -188,18 +189,18 @@ void format_job_info(job *j, char const *msg)
 
 // Notify user of changes in job status, free job if completed
 // Return exit code of the completed job that was launched most recently
-int do_job_notification(void)
+int report_job_status(void)
 {
-    update_status();
+    check_job_status();
     int ret = 0;
-    size_t job_len = vec_len(job_table);
-    for (job **j_p = job_table; j_p < job_table + job_len; j_p++) {
+    job **job_end = job_table + vec_len(job_table);
+    for (job **j_p = job_table; j_p != job_end; j_p++) {
         job *j = *j_p;
         if (!j) {
             continue;
         }
         // If all procs have completed, job is completed
-        if (job_is_completed(j)) {
+        if (is_completed(j)) {
             // Only notify about background jobs
             if (j->bkg) {
                 format_job_info(j, "completed");
@@ -208,15 +209,14 @@ int do_job_notification(void)
             ret = j->procs[vec_len(j->procs) - 1]->exit_code;
 
             // We are removing last job, calculate new last job index
-            // Amortized O(1)
-            if ((size_t) (j_p - job_table + 1) >= job_len) {
+            if (j_p + 1 >= job_end) {
                 job **j_crawl = j_p - 1;
                 for (; j_crawl >= job_table && !*j_crawl; j_crawl--);
                 vec_setlen(j_crawl - job_table + 1, job_table);
             }
             free_single_job(j);
             *j_p = NULL;
-        } else if (job_is_stopped(j) && !j->notified) {
+        } else if (is_stopped(j) && !j->notified) {
             format_job_info(j, "stopped");
             j->notified = 1;
         }
@@ -226,10 +226,10 @@ int do_job_notification(void)
 }
 
 // Mark stopped job as running
-static void mark_job_as_running(job *j)
+static void mark_running(job *j)
 {
-    size_t proc_len = vec_len(j->procs);
-    for (proc **p_p = j->procs; p_p < proc_len + j->procs; p_p++) {
+    proc **proc_end = j->procs + vec_len(j->procs);
+    for (proc **p_p = j->procs; p_p != proc_end; p_p++) {
         (*p_p)->stopped = 0;
     }
 
@@ -238,19 +238,19 @@ static void mark_job_as_running(job *j)
 
 void continue_job(job *j)
 {
-    mark_job_as_running(j);
+    mark_running(j);
     if (j->bkg) {
-        put_job_in_background(j, 1);
+        send_to_background(j, 1);
     } else {
-        put_job_in_foreground(j, 1);
+        send_to_foreground(j, 1);
     }
 }
 
 // Return true if all processes in job have stopped or completed
-_Bool job_is_stopped(job *j)
+_Bool is_stopped(job *j)
 {
-    size_t proc_len = vec_len(j->procs);
-    for (proc **p_p = j->procs; p_p < j->procs + proc_len; p_p++) {
+    proc **proc_end = j->procs + vec_len(j->procs);
+    for (proc **p_p = j->procs; p_p != proc_end; p_p++) {
         proc *p = *p_p;
         if (!p->completed && !p->stopped) {
             return 0;
@@ -260,10 +260,10 @@ _Bool job_is_stopped(job *j)
 }
 
 // Check if all processes in job are completed
-_Bool job_is_completed(job *j)
+_Bool is_completed(job *j)
 {
-    size_t proc_len = vec_len(j->procs);
-    for (proc **p_p = j->procs; p_p < proc_len + j->procs; p_p++) {
+    proc **proc_end = j->procs + vec_len(j->procs);
+    for (proc **p_p = j->procs; p_p != proc_end; p_p++) {
         if (!(*p_p)->completed) {
             return 0;
         }
