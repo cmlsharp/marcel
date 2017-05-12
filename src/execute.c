@@ -24,6 +24,7 @@
 #include <fcntl.h> // open, close
 #include <sys/types.h> // pid_t
 #include <unistd.h> // close, dup, getpid, setpgid, tcsetpgrp
+#include <linux/limits.h> // PATH_MAX
 
 #include "signals.h" // reset_signals
 #include "ds/proc.h" // proc, job
@@ -50,10 +51,12 @@ static char const *builtin_names[] = {
 
 // Functions associated with shell builtins
 static proc_func const builtin_funcs[] = {
-    &m_cd,
-    &m_exit,
-    &m_help,
+    m_cd,
+    m_exit,
+    m_help,
 };
+
+static char oldpwd[PATH_MAX];
 
 // Hash table for shell builtins
 hash_table lookup_table;
@@ -208,11 +211,23 @@ static void exec_proc(proc const *p)
            strerror(errno), *p->argv);
 }
 
+
 static int m_cd(proc const *p)
 {
     // cd to homedir if no directory specified
-    char *dir = (p->argv[1]) ? p->argv[1] : getenv("HOME");
+    char *dir = p->argv[1] ? p->argv[1] : getenv("HOME");
+    _Bool old = strcmp(dir, "-") == 0;
+    if (old) {
+        // Hackish check for running "cd -" on first execution until we get
+        // variable handling
+        Stopif(!oldpwd[0], return 1, "OLDPWD not set"); 
+        size_t len = strlen(oldpwd);
+        dir = malloc((len+1) * sizeof *dir);
+        strcpy(dir,oldpwd);
+    }
+    getcwd(oldpwd, PATH_MAX);
     Stopif(chdir(dir) == -1, return 1, "%s", strerror(errno));
+    if (old) Free(dir);
     return 0;
 }
 

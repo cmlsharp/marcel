@@ -20,7 +20,8 @@
 
 #include "proc.h"
 #include "../macros.h"
-#define INITIAL_PROC_CAP 4
+// Should be more than enough
+#define INITIAL_PROC_CAP 32
 
 proc *new_proc(void)
 {

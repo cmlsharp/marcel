@@ -64,7 +64,7 @@ static inline char *get_input(void);
                 rl_replace_line("",0);                                  \
                 rl_redisplay();                                         \
             }                                                           \
-            printf("\n");                                               \
+            putchar('\n');                                              \
             sig_flags &= ~NO_RESTORE;                                   \
         }                                                               \
         run_queued_signals();                                           \
@@ -99,8 +99,8 @@ int main(void)
         job *j = new_job();
         j->name = malloc((strlen(buf) + 1) * sizeof *j->name);
         Assert_alloc(j->name);
-        strcpy(j->name, buf);
 
+        strcpy(j->name, buf);
         add_history(buf);
 
         YY_BUFFER_STATE b = yy_scan_string(buf);

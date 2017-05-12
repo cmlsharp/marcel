@@ -32,10 +32,10 @@
 // Length of array. ARR cannot be a pointer
 #define Arr_len(ARR) (sizeof (ARR) / sizeof *(ARR))
 
-#ifndef NDEBUG
-#define Error_prefix "%s (%s:%d): ", NAME, __FILE__, __LINE__
-#else
+#ifdef NDEBUG
 #define Error_prefix "%s: ", NAME
+#else
+#define Error_prefix "%s (%s:%d): ", NAME, __FILE__, __LINE__
 #endif
 
 // Standard way to print error messages across program
@@ -64,7 +64,7 @@
            strerror(errno))
 
 // More general version of Free. Allows for custom destructor
-// NOTE: _F(NULL) must be defined behavior for this macro to serve its purpose
+// NOTE: F(NULL) must be defined behavior for this macro to serve its purpose
 #define Cleanup(PTR, F)                                                     \
     do {                                                                    \
         F(PTR);                                                             \
