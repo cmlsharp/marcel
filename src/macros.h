@@ -25,7 +25,7 @@
 #include <string.h> // strerror
 
 // Use GCC specific attributes if they are available, ignore them if not
-#ifndef __attribute__
+#ifndef __GNUC__
 #define __attribute__(X)
 #endif
 
