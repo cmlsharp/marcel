@@ -221,9 +221,8 @@ static int m_cd(proc const *p)
         // Hackish check for running "cd -" on first execution until we get
         // variable handling
         Stopif(!oldpwd[0], return 1, "OLDPWD not set"); 
-        size_t len = strlen(oldpwd);
-        dir = malloc((len+1) * sizeof *dir);
-        strcpy(dir,oldpwd);
+        dir = strdup(oldpwd);
+        Assert_alloc(dir);
     }
     getcwd(oldpwd, PATH_MAX);
     Stopif(chdir(dir) == -1, return 1, "%s", strerror(errno));

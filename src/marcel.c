@@ -73,7 +73,6 @@ static inline char *get_input(void);
 
 int main(void)
 {
-
     Stopif(!initialize_builtins(), return M_FAILED_INIT,
            "Could not initialize builtin commands");
     Stopif(!initialize_job_control(), return M_FAILED_INIT,
@@ -97,13 +96,12 @@ int main(void)
         prepare_for_processing();
 
         job *j = new_job();
-        j->name = malloc((strlen(buf) + 1) * sizeof *j->name);
+        j->name = strdup(buf);
         Assert_alloc(j->name);
 
-        strcpy(j->name, buf);
         add_history(buf);
-
         YY_BUFFER_STATE b = yy_scan_string(buf);
+
         if (!yyparse(j) && j->valid) {
             register_job(j);
             launch_job(j);
@@ -113,10 +111,10 @@ int main(void)
 
         Cleanup(b, yy_delete_buffer);
         Free(buf);
-
         exit_code = report_job_status();
         prepare_for_input();
     }
+
     write_history(hist_path);
     free(hist_path);
     return exit_code;
@@ -170,7 +168,7 @@ static inline int restore_buffer(void)
     return 0;
 }
 
-static inline char *path_concat(char *dir, char *file) 
+static inline char *path_concat(char *dir, char *file)
 {
     size_t dlen = strlen(dir);
     size_t len = dlen + strlen(file) + 2;

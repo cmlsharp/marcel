@@ -2,9 +2,10 @@
 .SECONDARY:
 
 CC = gcc
-CFLAGS = -Wall -Wextra -pipe -fstack-protector -Wformat-security -std=c99
+CFLAGS = -Wall -Wextra -pipe -fstack-protector -Wformat-security -std=gnu99
 
-_DEFINES = _POSIX_C_SOURCE=200112L
+# marcel requires POSIX.1-2001 base specification + XSI extensions
+_DEFINES = _XOPEN_SOURCE=600
 DEFINES  = $(addprefix -D, $(_DEFINES))
 
 EXE = marcel
