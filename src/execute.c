@@ -63,7 +63,7 @@ hash_table lookup_table;
 
 // Create hashtable of shell builtins
 // Returns true on success, false on failure
-_Bool initialize_builtins(void)
+bool initialize_builtins(void)
 {
     lookup_table = new_table(TABLE_INIT_SIZE);
     // NOTE: We are mixing data pointers and function pointers here. ISO C
@@ -78,10 +78,10 @@ _Bool initialize_builtins(void)
         }
     }
 
-    if (atexit(cleanup_builtins) != 0) {
-        return 0;
+    if (atexit(cleanup_builtins)) {
+        return false;
     }
-    return 1;
+    return true;
 }
 
 static inline void builtin_destructor(node *n)
@@ -118,7 +118,7 @@ static void fd_cleanup(int *fd_arr, size_t n)
         }                                       \
     } while (0)
 
-static inline _Bool filter_command(void *val)
+static inline bool filter_command(void *val)
 {
     builtin *b = val;
     return b->type == CMD;
@@ -180,10 +180,10 @@ int launch_job(job *j)
     if (!interactive) {
         wait_for_job(j);
     } else if (j->bkg) {
-        send_to_background(j, 0);
+        send_to_background(j, false);
         format_job_info(j, "launched");
     } else {
-        send_to_foreground(j, 0);
+        send_to_foreground(j, false);
     }
 
     return 0;
@@ -216,7 +216,7 @@ static int m_cd(proc const *p)
 {
     // cd to homedir if no directory specified
     char *dir = p->argv[1] ? p->argv[1] : getenv("HOME");
-    _Bool old = strcmp(dir, "-") == 0;
+    bool old = strcmp(dir, "-") == 0;
     if (old) {
         // Hackish check for running "cd -" on first execution until we get
         // variable handling

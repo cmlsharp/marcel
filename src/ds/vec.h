@@ -19,6 +19,8 @@
 #ifndef M_VEC_H
 #define M_VEC_H
 
+#include <stddef.h>
+
 typedef void* vec;
 
 vec vec_alloc(size_t size);

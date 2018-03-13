@@ -38,7 +38,7 @@
 
 #define JOB_TABLE_INIT_SIZE 256
 
-_Bool interactive;
+bool interactive;
 static job **job_table;
 static pid_t shell_pgid;
 static struct termios shell_tmodes;
@@ -47,7 +47,7 @@ static void cleanup_jobs(void);
 
 // Put shell in forground if interactive
 // Returns true on success, false on failure
-_Bool initialize_job_control(void)
+bool initialize_job_control(void)
 {
     job_table = vec_alloc(JOB_TABLE_INIT_SIZE * sizeof *job_table);
     interactive = isatty(SHELL_TERM);
@@ -58,7 +58,7 @@ _Bool initialize_job_control(void)
         }
         // Put in own process group
         shell_pgid = getpid();
-        Stopif(setpgid(shell_pgid, shell_pgid) < 0, return 0,
+        Stopif(setpgid(shell_pgid, shell_pgid) < 0, return false,
                "Couldn't put shell in its own process group");
 
         // Get control of terminal
@@ -67,7 +67,7 @@ _Bool initialize_job_control(void)
         tcgetattr(SHELL_TERM, &shell_tmodes);
     }
     atexit(cleanup_jobs);
-    return 1;
+    return true;
 }
 
 // Free job table and kill all background jobs
@@ -92,7 +92,7 @@ static void cleanup_jobs(void)
 }
 
 // Put job in foreground, continuing if cont is true
-void send_to_foreground(job *j, _Bool cont)
+void send_to_foreground(job *j, bool cont)
 {
     // Put job in foreground
     tcsetpgrp(SHELL_TERM, j->pgid);
@@ -113,7 +113,7 @@ void send_to_foreground(job *j, _Bool cont)
 }
 
 // Put job in background, send SIGCONT if cont is true
-void send_to_background(job *j, _Bool cont)
+void send_to_background(job *j, bool cont)
 {
     // Send SIGCONT if necessary
     if (cont) {
@@ -124,7 +124,7 @@ void send_to_background(job *j, _Bool cont)
 // Find proc that corresponds with pid and mark it as stopped or completed as
 // apropriate.  Return true on success, false on failure
 // TODO: Extend to returning information about other kinds of signals
-_Bool mark_proc_status(pid_t pid, int status)
+bool mark_proc_status(pid_t pid, int status)
 {
     if (pid > 0) {
         job **job_end = job_table + vec_len(job_table);
@@ -139,23 +139,23 @@ _Bool mark_proc_status(pid_t pid, int status)
                 if (p->pid == pid) {
                     if (WIFSTOPPED(status) || WIFCONTINUED(status)) {
                         p->stopped = !p->stopped;
-                        j->notified = 0;
+                        j->notified = false;
                     } else {
                         p->exit_code = (WIFSIGNALED(status)) ? M_SIGINT : WEXITSTATUS(status);
-                        p->completed = 1;
+                        p->completed = true;
                     }
-                    return 1;
+                    return true;
                 }
             }
         }
         Err_msg("No child process %d", pid);
-        return 0;
+        return false;
     } else if (pid == 0 || errno == ECHILD) {
         // No processes available to report
-        return 0;
+        return false;
     } else {
         Err_msg("Error waiting on child process");
-        return 0;
+        return false;
     }
 }
 
@@ -218,7 +218,7 @@ int report_job_status(void)
             *j_p = NULL;
         } else if (is_stopped(j) && !j->notified) {
             format_job_info(j, "stopped");
-            j->notified = 1;
+            j->notified = true;
         }
     }
     return ret;
@@ -230,60 +230,60 @@ static void mark_running(job *j)
 {
     proc **proc_end = j->procs + vec_len(j->procs);
     for (proc **p_p = j->procs; p_p != proc_end; p_p++) {
-        (*p_p)->stopped = 0;
+        (*p_p)->stopped = false;
     }
 
-    j->notified = 0;
+    j->notified = false;
 }
 
 void continue_job(job *j)
 {
     mark_running(j);
     if (j->bkg) {
-        send_to_background(j, 1);
+        send_to_background(j, true);
     } else {
-        send_to_foreground(j, 1);
+        send_to_foreground(j, true);
     }
 }
 
 // Return true if all processes in job have stopped or completed
-_Bool is_stopped(job *j)
+bool is_stopped(job *j)
 {
     proc **proc_end = j->procs + vec_len(j->procs);
     for (proc **p_p = j->procs; p_p != proc_end; p_p++) {
         proc *p = *p_p;
         if (!p->completed && !p->stopped) {
-            return 0;
+            return false;
         }
     }
-    return 1;
+    return true;
 }
 
 // Check if all processes in job are completed
-_Bool is_completed(job *j)
+bool is_completed(job *j)
 {
     proc **proc_end = j->procs + vec_len(j->procs);
     for (proc **p_p = j->procs; p_p != proc_end; p_p++) {
         if (!(*p_p)->completed) {
-            return 0;
+            return false;
         }
     }
-    return 1;
+    return true;
 }
 
 // Add job to global job list, return false if array needs to be grown, but
 // could not be or if job table has not been initialized
-_Bool register_job(job *j)
+bool register_job(job *j)
 {
     if (!job_table) {
-        return 0;
+        return false;
     }
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wincompatible-pointer-types"
     size_t job_cap = vec_capacity(job_table) / sizeof *job_table;
     if ((vec_len(job_table) + 1 >= job_cap)
             && vec_grow(&job_table) != 0) {
-        return 0;
+        return false;
     }
 #pragma GCC diagnostic pop
 #pragma GCC diagnostic pop
@@ -297,11 +297,11 @@ _Bool register_job(job *j)
             if (i >= vec_len(job_table)) {
                 vec_setlen(vec_len(job_table) + 1, job_table);
             }
-            return 1;
+            return true;
         }
 
     }
 
-    return 0;
+    return false;
 
 }

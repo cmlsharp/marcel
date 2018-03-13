@@ -75,14 +75,14 @@ char *esc_strdup(char *str)
     size_t len = strlen(str);
     char *ret = malloc((len+1) * sizeof *ret);
     Assert_alloc(ret);
-    _Bool prev = 0;
+    bool prev = false;
     for (size_t i = 0, j = 0; i < len + 1; i++) {
-        if (str[i] == '\\' && prev == 0) {
-            prev = 1;
+        if (str[i] == '\\' && !prev) {
+            prev = true;
             continue;
         }
         ret[j++] = str[i];
-        prev = 0;
+        prev = false;
     }
     return ret;
 }

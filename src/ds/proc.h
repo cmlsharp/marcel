@@ -21,6 +21,7 @@
 
 #define ARGV_INIT_SIZE 1024
 
+#include <stdbool.h>
 #include <sys/types.h>
 #include <termios.h>
 #include "vec.h"
@@ -31,8 +32,8 @@ typedef struct proc {
     char **env; // Vec of environment variables in the form "VAR=VALUE"
     pid_t pid; // Pid of command
     int fds[3]; // File descriptors for input, output, error
-    _Bool completed; // Command has finished executing
-    _Bool stopped; // Command has been stopped
+    bool completed; // Command has finished executing
+    bool stopped; // Command has been stopped
     int exit_code; // Status code proc exited with
 } proc;
 
@@ -52,9 +53,9 @@ typedef struct job {
     proc_io io[3]; // stdin, stdout and stderr
     pid_t pgid; // Proc group ID for job
     struct {
-        _Bool notified  : 1; // User has been notified of state change
-        _Bool bkg       : 1; // Job should execute in background
-        _Bool valid     : 1; // Should job be sent to launch_job
+        bool notified  : 1; // User has been notified of state change
+        bool bkg       : 1; // Job should execute in background
+        bool valid     : 1; // Should job be sent to launch_job
     };
     struct termios tmodes; // Terminal modes for job
 } job;

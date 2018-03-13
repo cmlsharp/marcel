@@ -69,7 +69,7 @@ static inline char *get_input(void);
         }                                                               \
         run_queued_signals();                                           \
         sig_flags |= WAITING_FOR_INPUT;                                 \
-    } while (0)
+    } while (false)
 
 int main(void)
 {
@@ -89,18 +89,18 @@ int main(void)
     read_history(hist_path);
 
     // buffer for stdin
-    char *buf = NULL;
+    char *line = NULL;
 
     prepare_for_input();
-    while ((buf = get_input())) {
+    while ((line = get_input())) {
         prepare_for_processing();
 
         job *j = new_job();
-        j->name = strdup(buf);
+        j->name = strdup(line);
         Assert_alloc(j->name);
 
-        add_history(buf);
-        YY_BUFFER_STATE b = yy_scan_string(buf);
+        add_history(line);
+        YY_BUFFER_STATE b = yy_scan_string(line);
 
         if (!yyparse(j) && j->valid) {
             register_job(j);
@@ -110,7 +110,7 @@ int main(void)
         }
 
         Cleanup(b, yy_delete_buffer);
-        Free(buf);
+        Free(line);
         exit_code = report_job_status();
         prepare_for_input();
     }

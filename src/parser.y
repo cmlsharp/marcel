@@ -89,13 +89,13 @@ int yyerror (job *w, char const *s);
     /*;*/
 
 pipes_line:
-    pipes io_mods bkg {p_job->valid = 1;}
+    pipes io_mods bkg {p_job->valid = true;}
     | 
     ;
 
 bkg:
     BKG {
-        p_job->bkg = 1;
+        p_job->bkg = true;
     }
     | 
     ;

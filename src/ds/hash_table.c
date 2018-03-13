@@ -68,7 +68,7 @@ int add_node(char const *k, void *v, hash_table t)
     return 0;
 }
 
-void *find_node(char const *k, _Bool (*filter)(void *), hash_table t)
+void *find_node(char const *k, bool (*filter)(void *), hash_table t)
 {
     if (!t) {
         return NULL;
@@ -76,7 +76,7 @@ void *find_node(char const *k, _Bool (*filter)(void *), hash_table t)
     node *crawler = t[get_index(k, vec_capacity(t) / sizeof *t)];
     while (crawler) {
         if (strcmp(crawler->key, k) == 0) {
-            _Bool end = filter ? filter(crawler->value) : 1;
+            bool end = filter ? filter(crawler->value) : 1;
             if (end) {
                 return crawler->value;
             } else {

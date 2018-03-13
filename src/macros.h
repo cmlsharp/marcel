@@ -20,8 +20,9 @@
 #define MARCELL_MACROS_H
 
 #include "marcel.h"
-#include <stdio.h> // fprintf
 #include <errno.h> // errno
+#include <stdbool.h>
+#include <stdio.h> // fprintf
 #include <string.h> // strerror
 
 // Use GCC specific attributes if they are available, ignore them if not
@@ -44,7 +45,7 @@
         fprintf(stderr, Error_prefix);                                      \
         fprintf(stderr, __VA_ARGS__);                                       \
         fprintf(stderr, "\n");                                              \
-    } while (0)
+    } while (false)
 
 // Make error handling easier
 #define Stopif(COND, ACTION, ...)                                           \
@@ -53,7 +54,7 @@
             Err_msg(__VA_ARGS__);                                           \
             ACTION;                                                         \
         }                                                                   \
-    } while (0)
+    } while (false)
 
 
 // Special case of Stopif for allocation errors
@@ -69,7 +70,7 @@
     do {                                                                    \
         F(PTR);                                                             \
         PTR = NULL;                                                         \
-    } while (0)
+    } while (false)
 
 // Stop double frees/use after frees
 #define Free(PTR) Cleanup (PTR, free)

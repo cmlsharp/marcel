@@ -19,6 +19,7 @@
 #ifndef MARCEL_EXEC_H
 #define MARCEL_EXEC_H
 
+#include <stdbool.h>
 #include "ds/hash_table.h"
 #include "ds/proc.h" // proc
 
@@ -26,7 +27,7 @@
 typedef int (*proc_func)(proc const*);
 
 int launch_job(job *j);
-_Bool initialize_builtins(void);
+bool initialize_builtins(void);
 
 
 // Tagged pointers would be a nice optimization but they don't seemt to work with function pointers

@@ -19,24 +19,25 @@
 #ifndef M_JOB_CTRL
 #define M_JOB_CTRL
 
+#include <stdbool.h>
 #include "ds/proc.h" // job
 
 #define SHELL_TERM STDIN_FILENO
 
-extern _Bool interactive;
+extern bool interactive;
 
 
-_Bool initialize_job_control(void);
-void send_to_foreground(job *j, _Bool cont);
-void send_to_background(job *j, _Bool cont);
-_Bool mark_proc_status(pid_t pid, int status);
+bool initialize_job_control(void);
+void send_to_foreground(job *j, bool cont);
+void send_to_background(job *j, bool cont);
+bool mark_proc_status(pid_t pid, int status);
 void check_job_status(void);
 void wait_for_job(job *j);
 void format_job_info(job *j, char const *msg);
 int report_job_status(void);
 void continue_job(job *j);
 job *find_job(pid_t pgid, job const *crawler);
-_Bool is_stopped(job *j);
-_Bool is_completed(job *j);
-_Bool register_job(job *j);
+bool is_stopped(job *j);
+bool is_completed(job *j);
+bool register_job(job *j);
 #endif
