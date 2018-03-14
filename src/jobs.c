@@ -271,8 +271,8 @@ bool is_completed(job *j)
     return true;
 }
 
-// Add job to global job list, return false if array needs to be grown, but
-// could not be or if job table has not been initialized
+// Add job to global job list, return false if job table needs to expand, but
+// expansion failed or if job table has not been initialized
 bool register_job(job *j)
 {
     if (!job_table) {
@@ -281,13 +281,14 @@ bool register_job(job *j)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wincompatible-pointer-types"
     size_t job_cap = vec_capacity(job_table) / sizeof *job_table;
-    if ((vec_len(job_table) + 1 >= job_cap)
+    // Grow job table if necessary
+    if (vec_len(job_table) + 1 >= job_cap
             && vec_grow(&job_table) != 0) {
         return false;
     }
 #pragma GCC diagnostic pop
-#pragma GCC diagnostic pop
 
+    // Find empty slot in table to place job
     job **job_end = job_table + job_cap;
     for (job **j_p = job_table; j_p != job_end; j_p++) {
         if (!*j_p) {

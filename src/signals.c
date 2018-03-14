@@ -55,7 +55,7 @@ sig_atomic_t volatile sig_flags;
 
 void sig_handle(int sig)
 {
-    struct sigaction act = {0};
+    struct sigaction act = {{0}};
     sigemptyset(&act.sa_mask);
     act.sa_handler = handler_async;
     sigaction(sig, &act, NULL);

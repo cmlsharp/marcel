@@ -169,6 +169,5 @@ int yyerror (job *w, char const *s)
     return 0;
 }
 #pragma GCC diagnostic pop
-#pragma GCC diagnostic pop
 
 /*yydebug = 1;*/

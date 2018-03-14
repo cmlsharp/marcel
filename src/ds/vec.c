@@ -113,4 +113,3 @@ int vec_grow(vec *v)
 
 
 #pragma GCC diagnostic pop
-#pragma GCC diagnostic pop

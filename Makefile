@@ -1,8 +1,8 @@
 # Tell make to stop removing intermediate files
 .SECONDARY:
 
-CC = gcc
-CFLAGS = -Wall -Wextra -pipe -fstack-protector -Wformat-security -std=c99
+CC ?= gcc
+CFLAGS = -Wall -Werror -Wextra -Wno-missing-field-initializers -pipe -fstack-protector -Wformat-security -std=c99
 
 # marcel requires POSIX.1-2001 base specification + XSI extensions
 _DEFINES = _XOPEN_SOURCE=600
