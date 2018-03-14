@@ -2,7 +2,7 @@
 .SECONDARY:
 
 CC = gcc
-CFLAGS = -Wall -Wextra -pipe -fstack-protector -Wformat-security -std=gnu99
+CFLAGS = -Wall -Wextra -pipe -fstack-protector -Wformat-security -std=c99
 
 # marcel requires POSIX.1-2001 base specification + XSI extensions
 _DEFINES = _XOPEN_SOURCE=600
